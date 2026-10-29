@@ -32,6 +32,19 @@ def test_amount_gas_estimate():
     val = get_amount(amount)
     assert val == 3500 # 250 / 25 * 3.5 = 35.00 -> 3500 cents
 
+def test_amount_gas_estimate_zero_or_negative_mpg():
+    amount = AmountModel(
+        gas_estimate=GasEstimate(mpg=0.0, cost_per_gallon=3.5, miles_per_period=250.0)
+    )
+    val = get_amount(amount)
+    assert val == 0
+
+    amount2 = AmountModel(
+        gas_estimate=GasEstimate(mpg=-10.0, cost_per_gallon=3.5, miles_per_period=250.0)
+    )
+    val2 = get_amount(amount2)
+    assert val2 == 0
+
 def test_amount_grocery_estimate():
     amount = AmountModel(
         grocery_estimate=GroceryEstimate(people=3, cost_per_person_per_period=100.0)
