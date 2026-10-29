@@ -76,8 +76,19 @@ def load_scenario(path: str) -> ScenarioModel:
 
     for inc in includes:
         inc_path = os.path.join(repo_root, inc)
-        if not os.path.exists(inc_path):
+        abs_inc_path = os.path.abspath(inc_path)
+        abs_repo_root = os.path.abspath(repo_root)
+
+        # Check if resolved path is within repo_root
+        if not (os.path.commonpath([abs_inc_path, abs_repo_root]) == abs_repo_root and os.path.exists(inc_path)):
             inc_path = os.path.join(base_dir, inc) # fallback to relative to scenario
+            abs_inc_path = os.path.abspath(inc_path)
+            abs_base_dir = os.path.abspath(base_dir)
+
+            # Check if resolved path is within base_dir
+            if not os.path.commonpath([abs_inc_path, abs_base_dir]) == abs_base_dir:
+                raise ValueError(f"Invalid include path: '{inc}' escapes allowed directories.")
+
         with open(inc_path, "r") as f:
             inc_data = yaml.safe_load(f)
 
