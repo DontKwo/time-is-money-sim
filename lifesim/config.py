@@ -1,3 +1,4 @@
+import logging
 import yaml
 from datetime import date
 from pydantic import BaseModel, Field
@@ -95,7 +96,7 @@ def load_scenario(path: str) -> ScenarioModel:
     filtered_flows = [flow for flow in merged_flows if flow["name"] not in excludes]
 
     # handle duplicate flow names
-    import logging
+
     seen_names = {}
     for flow in filtered_flows:
         base_name = flow["name"]
