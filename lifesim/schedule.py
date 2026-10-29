@@ -1,11 +1,10 @@
+import calendar
 from datetime import date
 from .config import ScheduleModel
 
 WEEKDAYS = {
     'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5, 'sun': 6
 }
-
-import calendar
 
 def should_fire(schedule: ScheduleModel, current_date: date, start_date: date) -> bool:
     if schedule.monthly is not None:
