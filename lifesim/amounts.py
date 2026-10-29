@@ -14,7 +14,10 @@ def get_amount(amount: AmountModel, rng: np.random.Generator = None) -> int:
     elif amount.lognormal is not None and len(amount.lognormal) == 2:
         val = rng.lognormal(amount.lognormal[0], amount.lognormal[1])
     elif amount.gas_estimate is not None:
-        gallons = amount.gas_estimate.miles_per_period / amount.gas_estimate.mpg
+        if amount.gas_estimate.mpg <= 0:
+            gallons = 0
+        else:
+            gallons = amount.gas_estimate.miles_per_period / amount.gas_estimate.mpg
         val = gallons * amount.gas_estimate.cost_per_gallon
     elif amount.grocery_estimate is not None:
         val = amount.grocery_estimate.people * amount.grocery_estimate.cost_per_person_per_period
