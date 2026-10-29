@@ -20,6 +20,14 @@ def test_schedule_weekly():
     assert should_fire(schedule, date(2026, 1, 3), start_date) == False # Saturday
     assert should_fire(schedule, date(2026, 1, 9), start_date) == True # Next Friday
 
+def test_schedule_once():
+    schedule = ScheduleModel(once='2026-02-14')
+    start_date = date(2026, 1, 1)
+
+    assert should_fire(schedule, date(2026, 2, 14), start_date) == True
+    assert should_fire(schedule, date(2026, 2, 13), start_date) == False
+    assert should_fire(schedule, date(2026, 2, 15), start_date) == False
+
 import os
 from lifesim.config import AmountModel, GasEstimate, GroceryEstimate
 from lifesim.amounts import get_amount
