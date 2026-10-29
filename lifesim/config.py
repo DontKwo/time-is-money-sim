@@ -1,3 +1,5 @@
+import os
+import logging
 import yaml
 from datetime import date
 from pydantic import BaseModel, Field
@@ -51,8 +53,6 @@ class ScenarioModel(BaseModel):
     accounts: Dict[str, AccountModel]
     flows: List[FlowModel]
 
-import os
-
 def load_scenario(path: str) -> ScenarioModel:
     with open(path, "r") as f:
         data = yaml.safe_load(f)
@@ -95,7 +95,6 @@ def load_scenario(path: str) -> ScenarioModel:
     filtered_flows = [flow for flow in merged_flows if flow["name"] not in excludes]
 
     # handle duplicate flow names
-    import logging
     seen_names = {}
     for flow in filtered_flows:
         base_name = flow["name"]
