@@ -60,7 +60,15 @@ def load_scenario(path: str) -> ScenarioModel:
     excludes = set(data.get("exclude", []))
 
     base_dir = os.path.dirname(os.path.abspath(path))
-    repo_root = os.path.dirname(base_dir) # assumes scenarios/ is in repo root
+
+    # find repo root by traversing up
+    current_dir = base_dir
+    repo_root = base_dir
+    while current_dir != os.path.dirname(current_dir):
+        if os.path.exists(os.path.join(current_dir, "requirements.txt")) or os.path.exists(os.path.join(current_dir, ".git")):
+            repo_root = current_dir
+            break
+        current_dir = os.path.dirname(current_dir)
 
     merged_accounts = {}
     merged_flows = []
@@ -84,6 +92,19 @@ def load_scenario(path: str) -> ScenarioModel:
 
     # filter flows by exclude list
     filtered_flows = [flow for flow in merged_flows if flow["name"] not in excludes]
+
+    # handle duplicate flow names
+    import logging
+    seen_names = {}
+    for flow in filtered_flows:
+        base_name = flow["name"]
+        if base_name in seen_names:
+            seen_names[base_name] += 1
+            new_name = f"{base_name}_{seen_names[base_name]}"
+            logging.warning(f"Duplicate flow name '{base_name}' found. Renaming to '{new_name}'.")
+            flow["name"] = new_name
+        else:
+            seen_names[base_name] = 1
 
     data["accounts"] = merged_accounts
     data["flows"] = filtered_flows

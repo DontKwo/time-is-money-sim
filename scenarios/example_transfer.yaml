@@ -1,0 +1,19 @@
+start: 2026-01-01
+days: 5
+seed: 42
+
+accounts:
+  checking:
+    balance: 3000
+  savings:
+    balance: 1000
+
+flows:
+  - name: Transfer
+    type: transfer
+    from: checking
+    to: savings
+    schedule:
+      monthly: 1
+    amount:
+      fixed: 500
