@@ -1,3 +1,4 @@
+import os
 import yaml
 from datetime import date
 from pydantic import BaseModel, Field
@@ -50,8 +51,6 @@ class ScenarioModel(BaseModel):
     exclude: Optional[List[str]] = []
     accounts: Dict[str, AccountModel]
     flows: List[FlowModel]
-
-import os
 
 def load_scenario(path: str) -> ScenarioModel:
     with open(path, "r") as f:
