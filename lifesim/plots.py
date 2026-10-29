@@ -8,7 +8,7 @@ def plot_balances(df: pd.DataFrame, filename: str):
     plt.figure(figsize=(10, 6))
 
     for account, data in df.groupby('account'):
-        plt.plot(data['date'], data['balance'], label=account)
+        plt.step(data['date'], data['balance'], where='post', label=account)
 
     plt.xlabel('Date')
     plt.ylabel('Balance ($)')

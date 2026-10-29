@@ -111,3 +111,74 @@ def test_engine_run():
     # Jan 1: Rent -1800 -> 1200
     # Jan 2: Paycheck +2000 -> 3200
     assert paycheck_tx.iloc[0]['balance'] == 3200.0
+
+def test_overdraft_limit(tmp_path):
+    scenario_file = tmp_path / "scenario_od_limit.yaml"
+    with open(scenario_file, "w") as f:
+        f.write("""
+start: 2026-01-01
+days: 2
+accounts:
+  checking:
+    balance: 100
+    overdraft_limit: 50
+flows:
+  - name: LargeExpense
+    type: expense
+    from: checking
+    schedule: {monthly: 1}
+    amount: {fixed: 200}
+""")
+
+    orig_dir = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        scenario = load_scenario("scenario_od_limit.yaml")
+        ledger = run(scenario)
+        df = ledger.to_df()
+
+        # Balance should still be 100, transaction should be skipped because 100 - 200 = -100, which is < -50
+        assert len(df) == 0
+    finally:
+        os.chdir(orig_dir)
+
+def test_overdraft_fee(tmp_path):
+    scenario_file = tmp_path / "scenario_od_fee.yaml"
+    with open(scenario_file, "w") as f:
+        f.write("""
+start: 2026-01-01
+days: 2
+accounts:
+  checking:
+    balance: 100
+    overdraft_limit: 500
+    overdraft_fee: 35
+flows:
+  - name: MediumExpense
+    type: expense
+    from: checking
+    schedule: {monthly: 1}
+    amount: {fixed: 200}
+""")
+
+    orig_dir = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        scenario = load_scenario("scenario_od_fee.yaml")
+        ledger = run(scenario)
+        df = ledger.to_df()
+
+        # 100 - 200 = -100
+        # -100 - 35 = -135
+        assert len(df) == 2
+
+        expense_tx = df[df['flow'] == 'MediumExpense']
+        fee_tx = df[df['flow'] == 'MediumExpense Overdraft Fee']
+
+        assert len(expense_tx) == 1
+        assert len(fee_tx) == 1
+
+        assert expense_tx.iloc[0]['balance'] == -100.0
+        assert fee_tx.iloc[0]['balance'] == -135.0
+    finally:
+        os.chdir(orig_dir)

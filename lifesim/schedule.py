@@ -11,24 +11,31 @@ def should_fire(schedule: ScheduleModel, current_date: date, start_date: date) -
     if schedule.monthly is not None:
         _, last_day_of_month = calendar.monthrange(current_date.year, current_date.month)
         target_day = min(schedule.monthly, last_day_of_month)
-        return current_date.day == target_day
+        if current_date.day == target_day:
+            return True
 
     if schedule.weekly is not None:
         day_str = schedule.weekly.lower()
         if day_str in WEEKDAYS:
-            return current_date.weekday() == WEEKDAYS[day_str]
+            if current_date.weekday() == WEEKDAYS[day_str]:
+                return True
 
     if schedule.yearly is not None:
         month = schedule.yearly.get('month')
         day = schedule.yearly.get('day')
 
-        if month == 2 and day == 29:
-            if not calendar.isleap(current_date.year):
-                day = 28
+        _, last_day_of_month = calendar.monthrange(current_date.year, month)
+        target_day = min(day, last_day_of_month)
 
-        return current_date.month == month and current_date.day == day
+        if current_date.month == month and current_date.day == target_day:
+            return True
+
     if schedule.once is not None:
-        # Assuming once is a string in YYYY-MM-DD format
-        once_date = date.fromisoformat(schedule.once)
-        return current_date == once_date
+        try:
+            once_date = date.fromisoformat(schedule.once)
+            if current_date == once_date:
+                return True
+        except ValueError:
+            pass
+
     return False
