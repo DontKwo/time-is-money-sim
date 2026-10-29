@@ -1,7 +1,7 @@
 import yaml
 from datetime import date
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List
 
 class AccountModel(BaseModel):
     balance: float
