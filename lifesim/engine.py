@@ -15,7 +15,7 @@ def run(scenario: ScenarioModel) -> Ledger:
     for flow in scenario.flows:
         # Create a deterministic seed per flow based on the scenario seed and flow name
         seed_str = f"{base_seed}_{flow.name}"
-        flow_seed = int(hashlib.md5(seed_str.encode()).hexdigest(), 16) % (2**32)
+        flow_seed = int(hashlib.sha256(seed_str.encode()).hexdigest(), 16) % (2**32)
         flow_rngs[flow.name] = np.random.default_rng(flow_seed)
 
     balances = {
