@@ -46,6 +46,14 @@ def test_amount_distributions():
     # Using fixed seed 42
     assert isinstance(val, int)
 
+    amount_uniform = AmountModel(uniform=[50.0, 150.0])
+    val_uniform = get_amount(amount_uniform, rng)
+    assert isinstance(val_uniform, int)
+
+    amount_lognormal = AmountModel(lognormal=[0.0, 1.0])
+    val_lognormal = get_amount(amount_lognormal, rng)
+    assert isinstance(val_lognormal, int)
+
 def test_include_exclude_logic(tmp_path):
     # Create mock defaults
     defaults_dir = tmp_path / "defaults"
