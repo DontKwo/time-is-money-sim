@@ -25,17 +25,18 @@ def run(scenario: ScenarioModel) -> Ledger:
 
     current_date = scenario.start
 
-    for _ in range(scenario.days):
-        # Sort flows so income happens first
-        daily_flows = sorted(scenario.flows, key=lambda f: 0 if f.type == 'income' else 1)
+    # Precompute loop-invariants
+    default_account = list(scenario.accounts.keys())[0] if scenario.accounts else 'checking'
+    # Sort flows so income happens first
+    daily_flows = sorted(scenario.flows, key=lambda f: 0 if f.type == 'income' else 1)
 
+    for _ in range(scenario.days):
         for flow in daily_flows:
             if should_fire(flow.schedule, current_date, scenario.start):
                 if flow.skip_prob > 0 and flow_rngs[flow.name].random() < flow.skip_prob:
                     continue
 
                 amount = get_amount(flow.amount, flow_rngs[flow.name])
-                default_account = list(scenario.accounts.keys())[0] if scenario.accounts else 'checking'
                 if flow.type == 'income':
                     account = flow.to_account or default_account
                     if account in balances:
