@@ -5,7 +5,7 @@ from typing import Optional, Dict, List, Any
 
 class AccountModel(BaseModel):
     balance: float
-    overdraft_limit: Optional[float] = 0.0
+    overdraft_limit: Optional[float] = None
     overdraft_fee: Optional[float] = 0.0
 
 class GasEstimate(BaseModel):
@@ -40,6 +40,7 @@ class FlowModel(BaseModel):
     to_account: Optional[str] = Field(default=None, alias="to")
     category: Optional[str] = None
     tags: Optional[List[str]] = None
+    skip_prob: Optional[float] = 0.0
 
 class ScenarioModel(BaseModel):
     start: date

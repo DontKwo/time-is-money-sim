@@ -24,4 +24,4 @@ def get_amount(amount: AmountModel, rng: np.random.Generator = None) -> int:
     else:
         val = 0.0
 
-    return int(round(val * 100))
+    return max(0, int(round(val * 100)))
