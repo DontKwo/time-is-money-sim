@@ -1,0 +1,418 @@
+# Life Money Simulator: Plan
+
+A daily-tick, event-driven personal finance simulator in Python. Every inflow and outflow is a user-named, user-defined flow with its own schedule and amount rule. Nothing is mandatory: add, remove, rename, or disable any flow by editing one block in a config file.
+
+## 1. Goals
+
+- Time-accurate: simulate day by day, so paychecks, rent, grocery runs, and card due dates land on real calendar dates.
+- Fully configurable: when things happen, how often, how much, and from which account.
+- Zero required items: a scenario with only a paycheck and rent is valid. So is one with 40 flows.
+- Free naming: flow names, categories, and account names are all arbitrary strings.
+- Reproducible: same scenario plus same seed gives identical results.
+- Useful output: plots, statistics, scenario comparison, and Monte Carlo.
+
+## 2. Flexibility principles (the "easy add/remove" requirements)
+
+These rules are the backbone of the config design.
+
+1. **Flows are a plain list.** Each flow is one self-contained block. Adding one means pasting a block. Removing one means deleting the block or setting `enabled: false`. No other part of the file references it by name, so nothing breaks.
+2. **No required flows, accounts beyond one, or categories.** The only hard requirement is at least one account (default: `checking`).
+3. **Names are free text.** `name: "Netflix"`, `name: "Dad's birthday gift"`, whatever. Names only need to be unique, and the loader auto-suffixes duplicates with a warning rather than failing.
+4. **Categories are free text too.** Use them for grouping in plots and stats. Omit one and the flow falls into `uncategorized`.
+5. **Everything has a default.** A flow needs only `name`, `type`, `schedule`, and `amount`. Account defaults to the first account. Dates default to the whole simulation. Skip probability defaults to 0. Inflation linkage defaults to off.
+6. **Policies and events reference flows by tag, not by name.** For example, "on any flow tagged `payday`". Deleting a flow never leaves a dangling reference. Rules that match nothing simply do nothing (and log an info message).
+7. **Layered config.** `defaults/` holds optional template packs (see section 5). A scenario can `include:` any of them, override fields, or exclude individual items by name.
+8. **Strict-but-friendly validation.** Typos in field names produce an error with a suggestion ("did you mean `schedule`?"). Unknown flow names in a policy produce a warning, not a crash.
+9. **Runtime toggles.** Events can switch any flow on or off by tag mid-simulation (job loss turns off `income:salary`, turns on `income:unemployment`).
+10. **Overrides from the CLI.** `--set flows.rent.amount.fixed=2200` for quick what-ifs without editing the file.
+
+## 3. Stack
+
+- Python 3.11+
+- `pydantic` for config models and validation (or `dataclasses` plus manual checks)
+- `PyYAML` for scenario files
+- `numpy` for the seeded `Generator`
+- `pandas` for the ledger and analysis
+- `matplotlib` for plots (optional later: `plotly`, `streamlit`)
+- `pytest` for tests
+- Money stored as integer cents internally. Display and config accept dollars.
+
+## 4. Project layout
+
+```
+lifesim/
+  config.py        # load, merge, validate YAML into models
+  schedule.py      # recurrence rules (when)
+  amounts.py       # amount distributions (how much)
+  flows.py         # Income / Expense / Transfer definitions
+  accounts.py      # checking, savings, credit card, loan, investment
+  policies.py      # tag-based rules (auto-save, overdraft cover, sweeps)
+  events.py        # random shocks and scripted life events
+  macro.py         # inflation, raises, market returns, tax
+  engine.py        # the daily loop
+  ledger.py        # transaction log to DataFrame
+  analysis.py      # statistics
+  plots.py         # charts
+  montecarlo.py    # N runs and aggregation
+  compare.py       # scenario A vs B
+  cli.py           # python -m lifesim run scenario.yaml
+defaults/
+  income.yaml      # optional template packs
+  housing.yaml
+  transport.yaml
+  food.yaml
+  insurance.yaml
+  health.yaml
+  subscriptions.yaml
+  lifestyle.yaml
+  annual.yaml
+  shocks.yaml
+scenarios/
+  example_single.yaml
+  example_family.yaml
+tests/
+```
+
+## 5. Default expense and income catalog
+
+These ship as optional template packs. Every number is a placeholder you can change. Each pack can be included wholesale, or you can cherry-pick items from it. None is loaded unless the scenario asks for it.
+
+### Income
+
+| Name | Schedule | Amount | Notes |
+| --- | --- | --- | --- |
+| Paycheck | Weekly, Friday (or biweekly, semi-monthly) | $2,000 net, or gross with withholding | Gross-to-net optional, see section 8 |
+| Bonus | Yearly, Dec 15 | Normal(5000, 1500) | Skip probability 20% |
+| Side gig | Random, \~2 per month | Lognormal around $250 | Poisson-style |
+| Tax refund | Yearly, Mar 1 | Normal(1800, 800) | Can be negative (owe) |
+| Interest and dividends | Auto from accounts | n/a | Generated by account rules |
+| Gifts received | Yearly, Dec 25 | Uniform(50, 400) |  |
+| Unemployment benefits | Weekly, Tue | $450 | Off by default, enabled by job-loss event |
+| Social Security / pension | Monthly, 3rd | $1,800 | For retirement scenarios |
+| Rental income | Monthly, 1st | $1,200 |  |
+| Selling stuff | Random | Lognormal |  |
+
+### Housing
+
+| Name | Schedule | Amount |
+| --- | --- | --- |
+| Rent or mortgage | Monthly, 1st | $1,800 fixed |
+| Electricity | Monthly, day 12 | Seasonal normal(110, 30), higher in summer and winter |
+| Gas / heating | Monthly, day 14 | Seasonal, high in winter |
+| Water and sewer | Monthly, day 20 | Normal(60, 10) |
+| Trash | Quarterly | $45 |
+| Internet | Monthly, day 5 | $70 fixed |
+| Mobile phone | Monthly, day 8 | $65 fixed |
+| Renter's or home insurance | Monthly or yearly | $25/mo |
+| HOA | Monthly | $0 default |
+| Property tax | Twice yearly | Off by default |
+| Home maintenance | Random, \~3 per year | Lognormal around $300 |
+
+### Transportation
+
+| Name | Schedule | Amount |
+| --- | --- | --- |
+| Car payment | Monthly, day 10 | Amortized loan |
+| Auto insurance | Monthly (or 6-month) | $140 |
+| Gas / fuel | Weekly, Sunday | Normal(55, 12), tied to a gas-price index |
+| Parking and tolls | Weekly | Random, small |
+| Registration | Yearly | $150 |
+| Oil change and maintenance | Every \~5,000 miles, approx 2x per year | Normal(90, 20) |
+| Public transit pass | Monthly | $0 default |
+| Rideshare | Random, \~4 per month | Lognormal around $18 |
+
+### Food
+
+| Name | Schedule | Amount |
+| --- | --- | --- |
+| Groceries | Weekly, Saturday | Normal(150, 30), skip chance 5% |
+| Quick grocery run | 1 to 3 times per week, random | Normal(25, 10) |
+| Eating out / restaurants | \~2 times per week, random weekdays | Lognormal around $35 |
+| Coffee | Weekdays, probability 70% | Normal(5.5, 1) |
+| Takeout / delivery | \~1 per week | Lognormal around $28 |
+| Alcohol / bars | Weekends, probability 50% | Normal(45, 20) |
+
+### Insurance and health
+
+| Name | Schedule | Amount |
+| --- | --- | --- |
+| Health insurance premium | Monthly (or per paycheck) | $250 |
+| Dental / vision | Monthly | $30 |
+| Life insurance | Yearly or monthly | $30/mo |
+| Doctor copays | Random, \~4 per year | $30 to $60 |
+| Prescriptions | Monthly | $25 |
+| Medical shock bill | Random, \~0.7 per year | Lognormal around $900 |
+| Gym | Monthly | $40 |
+
+### Subscriptions
+
+| Name | Schedule | Amount |
+| --- | --- | --- |
+| Streaming service(s) | Monthly, user-chosen days | $8 to $20 each |
+| Music | Monthly | $11 |
+| Cloud storage | Monthly | $3 |
+| News, apps, software | Monthly or yearly | various |
+| Amazon Prime or similar | Yearly | $139 |
+
+Each subscription is its own flow, so cancelling one means deleting or disabling one block.
+
+### Lifestyle and entertainment
+
+| Name | Schedule | Amount |
+| --- | --- | --- |
+| Entertainment (movies, concerts, games) | \~3 per month, random | Lognormal around $40 |
+| Hobbies | Monthly | $60 |
+| Clothing | \~1 per month | Lognormal around $70 |
+| Personal care / haircut | Every 5 weeks | $35 |
+| Household supplies | Biweekly | $30 |
+| Impulse purchases | Random, \~2 per week | Lognormal around $20 |
+| Pets | Monthly food plus yearly vet | $60/mo, $300/yr |
+| Gifts given | Birthdays and holidays | $40 to $150 |
+| Charity | Monthly | $25 |
+| Vacation | Yearly, a date range | $2,500 spread over trip days |
+
+### Debt and savings
+
+| Name | Schedule | Amount |
+| --- | --- | --- |
+| Student loan | Monthly | Amortized |
+| Credit card payment | Monthly, due date | Full or minimum |
+| Auto-save | On payday | 10% |
+| 401k or retirement contribution | On payday | 6%, optional employer match |
+| Emergency fund top-up | Monthly | $200 |
+| Brokerage investing | Monthly | $300 |
+
+### Annual and irregular
+
+- Income tax (estimated or true-up) in April
+- Holiday spending in December
+- Birthday and anniversary spending
+- Annual fees (credit card, memberships)
+- Back-to-school, kids' expenses
+- Home and car repair shocks (see Events)
+
+## 6. Core config model
+
+### Flow (the universal building block)
+
+```yaml
+- name: "Netflix"            # required, any text
+  type: expense              # required: income | expense | transfer
+  schedule: {monthly: 14}    # required
+  amount: {fixed: 15.49}     # required
+  # everything below is optional
+  category: subscriptions    # free text, for grouping
+  tags: [fun, cancellable]   # free text, used by policies and events
+  from: checking             # account (expenses and transfers)
+  to: checking               # account (income and transfers)
+  payment_method: credit_card
+  start: 2026-03-01
+  end: 2028-12-31
+  enabled: true
+  skip_prob: 0.0
+  inflation: true            # amount follows inflation index
+  escalation: 0.03           # or a fixed yearly increase
+  steps:                     # raises or price changes on dates
+    - {date: 2027-01-01, amount: {fixed: 17.99}}
+  weekend_rule: after        # before | after | ignore
+  notes: "cancel when broke"
+```
+
+Only `name`, `type`, `schedule`, and `amount` are required.
+
+### Schedule types
+
+- `daily`, `every: N` (days), `weekly: fri`, `weekly: [mon, wed]`, `biweekly: fri` (with anchor date), `semimonthly: [1, 15]`
+- `monthly: 1`, `monthly: last`, `monthly: {nth: 2, weekday: tue}`
+- `quarterly`, `yearly: {month: 4, day: 15}`
+- `once: 2027-06-01`
+- `weekdays_only: true` modifier (coffee)
+- `random: {per_week: 2}`, `random: {per_month: 3}`, `random: {per_year: 1.5}` using a Poisson process, with optional weekday weights (restaurants skew to Fri/Sat)
+- `probability_daily: 0.7` combined with a weekday filter
+- `date_range` for vacations, with the amount spread or lump-summed
+
+### Amount types
+
+- `fixed: 150`
+- `uniform: [100, 200]`
+- `normal: [mean, sd]`
+- `lognormal: [median, sigma]` (right-skewed, good for groceries and repairs)
+- `choice: [[20, 0.5], [40, 0.3], [80, 0.2]]` (weighted)
+- `percent_of: {source: paycheck, pct: 0.10}`
+- `loan_payment: loan_name` (amortized amount from an account)
+- `statement_balance` / `minimum_due` (credit cards)
+- Modifiers: `min`, `max` (clamp), `inflation`, `escalation`, `seasonal: {summer: 1.3, winter: 1.4}`
+
+### Accounts
+
+```yaml
+accounts:
+  checking: {type: checking, balance: 3000, overdraft_limit: 500, overdraft_fee: 35, min_balance: 0}
+  savings:  {type: savings, balance: 10000, apy: 0.04, compounding: daily}
+  visa:     {type: credit_card, apr: 0.2399, statement_day: 25, due_day: 20, balance: 0, limit: 8000}
+  car_loan: {type: loan, principal: 18000, rate: 0.065, term_months: 60}
+  brokerage: {type: investment, balance: 5000, expected_return: 0.07, volatility: 0.16}
+```
+
+Account names are free text. A scenario with one `checking` account is fine.
+
+### Policies (tag-based rules)
+
+```yaml
+policies:
+  - {name: auto-save, when: {flow_tag: payday}, transfer: {from: checking, to: savings, pct: 0.10}}
+  - {name: overdraft cover, when: {balance_below: {account: checking, amount: 500}}, transfer: {from: savings, to: checking, top_up_to: 800}}
+  - {name: invest excess, when: {balance_above: {account: savings, amount: 20000}}, transfer: {from: savings, to: brokerage, excess_over: 20000}}
+  - {name: card autopay, when: {due_day_of: visa}, pay: {from: checking, to: visa, mode: statement_balance}}
+```
+
+Policies are optional and match by tag or condition. If nothing matches, nothing happens.
+
+### Events
+
+```yaml
+events:
+  - {name: car repair, poisson_per_year: 1.5, amount: {lognormal: [700, 0.6]}, category: shocks}
+  - {name: job loss, date: 2028-03-01, duration_months: 5, disable_tags: [salary], enable_tags: [unemployment]}
+  - {name: new job, date: 2028-08-01, set: {flow: salary, amount: {fixed: 2600}}}
+  - {name: baby, date: 2027-09-01, add_flows: [diapers, childcare], remove_flows: [vacation]}
+  - {name: move, date: 2029-01-01, set: {flow: rent, amount: {fixed: 2300}}}
+```
+
+### Global settings
+
+```yaml
+start: 2026-01-01
+days: 3650           # or end: 2036-01-01
+seed: 42
+currency: USD
+weekend_rule: ignore  # global default
+same_day_order: [income, fixed, variable, transfers]
+inflation: {mode: fixed, rate: 0.03}   # or stochastic: {mean: 0.03, sd: 0.01}
+raises: {annual_pct: 0.03, month: 1}
+tax: {mode: flat, rate: 0.22}
+```
+
+## 7. Daily loop (order is configurable, this is the default)
+
+1. Apply scripted and random events (which may toggle flows, change amounts, or inject one-off charges).
+2. Accrue interest on yesterday's closing balances (savings, loans, card carried balance, investment returns).
+3. Fire income flows.
+4. Fire fixed scheduled expenses (rent, loans, subscriptions).
+5. Fire variable and random expenses.
+6. Run policies (auto-transfers, sweeps, overdraft cover).
+7. Credit card statement and due-date processing.
+8. Apply overdraft and late fees if triggered.
+9. Snapshot all balances and write the day's record.
+
+Every transaction is appended to the ledger with: date, flow name, category, tags, amount (signed cents), from account, to account, resulting balances, and cause (`schedule`, `event`, `policy`, or `fee`).
+
+## 8. Taxes and paychecks
+
+- **Phase 1:** enter net pay directly.
+- **Later:** gross pay with a withholding breakdown (federal, state, FICA, 401k, health premium, HSA), all configurable and all optional. Starts as a flat effective rate, with brackets as an upgrade.
+- Optional annual true-up that produces the refund or amount owed.
+
+## 9. Outputs
+
+### Statistics
+
+- Starting, final, min, and max net worth, with dates for each extreme
+- Lowest checking balance and when it happened
+- Days overdrawn, overdraft fees paid, late fees paid
+- Total interest paid vs. earned
+- Total income, total spending, savings rate (overall and per year)
+- Spending by category: total, monthly average, and % of income
+- Top N biggest expenses and the most frequent expenses
+- Runway: days until broke if income stopped today (computed from trailing average spending)
+- Month-by-month table of income, spending, net, and ending balance
+- Monte Carlo: probability of going negative, probability of hitting a goal, p5/p25/p50/p75/p95 net worth bands, distribution of minimum balance
+
+### Plots
+
+- Balance over time by account, with net worth line
+- Event markers (paychecks, rent, shocks) overlaid on the balance line
+- Stacked monthly spending by category
+- Cumulative income vs. spending
+- Spending heatmap (weekday x week, or day of month)
+- Category pie or bar for any period
+- Monte Carlo fan chart with percentile bands
+- Scenario comparison overlay (A vs. B net worth)
+- Optional goal line (for example, "$100k by 2030")
+
+Exports: ledger CSV, daily balances CSV, stats JSON, and PNG or PDF plots.
+
+## 10. Edge cases and pitfalls
+
+- **Month-end dates:** day 31 in a 30-day month or February. Default is clamp to the last day of the month.
+- **Weekends and holidays:** per-flow `weekend_rule` of before, after, or ignore. Optional holiday calendar.
+- **Same-day ordering:** rent and paycheck on the 1st. The order is configurable so you can test both outcomes.
+- **Money precision:** integer cents internally, never floats for balances.
+- **Randomness:** one seeded `numpy.random.Generator`, with child generators per flow (so adding or removing one flow doesn't change the random draws of the others). This keeps scenario comparisons fair.
+- **Leap years:** use real calendar arithmetic, not 365-day assumptions.
+- **Negative balances:** checking can go negative up to the overdraft limit, and beyond that a policy decides what happens: decline the purchase, charge a fee, or put it on the credit card.
+- **Declined payments:** configurable per flow (`on_insufficient: skip | overdraft | credit_card | fail`).
+- **Rounding:** every amount is rounded to the cent at the moment it's generated.
+- **Inflation compounding:** index applied daily or monthly, documented, and consistent across all flows.
+- **Flow independence:** no flow may depend on another by name unless using the optional `percent_of`, and that lookup fails gracefully if the source is missing.
+
+## 11. Build phases
+
+1. **MVP:** YAML loader, fixed schedules (weekly, monthly, yearly, once), fixed amounts, one checking account, ledger, balance plot.
+2. **Randomness and stats:** distributions, skip probability, random-frequency schedules, seeded per-flow RNG, core statistics, spending-by-category plots.
+3. **Accounts and policies:** savings interest, credit card, loans, tag-based policies, overdraft logic.
+4. **Events and macro:** Poisson shocks, scripted life events, flow toggling, inflation, raises, seasonal amounts.
+5. **Catalog and ergonomics:** template packs under `defaults/`, `include:` and `exclude:`, CLI overrides, friendly validation errors.
+6. **Monte Carlo and comparison:** N runs, fan charts, probability stats, scenario A vs. B.
+7. **Polish:** gross-to-net taxes, holiday calendar, HTML or PDF report, optional Streamlit UI for toggling flows with checkboxes and sliders.
+
+## 12. Testing
+
+- Schedule unit tests: month-end clamping, leap day, weekend shift, biweekly anchoring, nth-weekday.
+- Amount tests: seeded distributions give expected means within tolerance, clamps hold.
+- Engine tests: a tiny hand-computed scenario matches exactly to the cent.
+- Invariant tests: total money is conserved across transfers, sum of ledger equals balance change, no flow means no transactions.
+- Flexibility tests: removing any single flow from the example scenarios still loads and runs, and adding a flow does not change other flows' random draws.
+- Config tests: typos produce helpful errors, empty flow lists are valid.
+
+## 13. Example scenario
+
+```yaml
+start: 2026-01-01
+days: 3650
+seed: 42
+
+include: [defaults/food.yaml]       # optional packs
+exclude: ["Alcohol / bars"]         # drop individual items by name
+
+accounts:
+  checking: {balance: 3000, overdraft_limit: 500, overdraft_fee: 35}
+  savings:  {balance: 10000, apy: 0.04}
+
+flows:
+  - {name: Paycheck, type: income, to: checking, tags: [payday, salary],
+     schedule: {weekly: fri}, amount: {fixed: 2000}}
+  - {name: Rent, type: expense, from: checking, category: housing,
+     schedule: {monthly: 1}, amount: {fixed: 1800}}
+  - {name: Netflix, type: expense, category: subscriptions,
+     schedule: {monthly: 14}, amount: {fixed: 15.49}}
+  - {name: "Taco Tuesday", type: expense, category: dining,
+     schedule: {weekly: tue}, amount: {normal: [30, 8]}, skip_prob: 0.15}
+
+policies:
+  - {name: auto-save, when: {flow_tag: payday},
+     transfer: {from: checking, to: savings, pct: 0.10}}
+
+events:
+  - {name: car repair, poisson_per_year: 1.5, amount: {lognormal: [700, 0.6]}}
+```
+
+## 14. Future ideas
+
+- Goals and milestones (down payment, retirement number) with time-to-goal estimates
+- Debt payoff strategies (snowball vs. avalanche)
+- Sensitivity analysis (which flow moves final net worth most)
+- Import real bank CSV to calibrate averages and variances per category
+- Couples and multi-person households with shared and separate accounts
+- Retirement drawdown with sequence-of-returns risk
+- Rent vs. buy comparison module
