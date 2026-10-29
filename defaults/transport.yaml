@@ -1,0 +1,25 @@
+flows:
+  - name: Car payment
+    type: expense
+    from: checking
+    schedule:
+      monthly: 10
+    amount:
+      fixed: 400
+  - name: Auto insurance
+    type: expense
+    from: checking
+    schedule:
+      monthly: 15
+    amount:
+      fixed: 140
+  - name: Gas / fuel
+    type: expense
+    from: checking
+    schedule:
+      weekly: sun
+    amount:
+      gas_estimate:
+        mpg: 25.0
+        cost_per_gallon: 3.50
+        miles_per_period: 300.0

@@ -20,6 +20,76 @@ def test_schedule_weekly():
     assert should_fire(schedule, date(2026, 1, 3), start_date) == False # Saturday
     assert should_fire(schedule, date(2026, 1, 9), start_date) == True # Next Friday
 
+import os
+from lifesim.config import AmountModel, GasEstimate, GroceryEstimate
+from lifesim.amounts import get_amount
+import numpy as np
+
+def test_amount_gas_estimate():
+    amount = AmountModel(
+        gas_estimate=GasEstimate(mpg=25.0, cost_per_gallon=3.5, miles_per_period=250.0)
+    )
+    val = get_amount(amount)
+    assert val == 3500 # 250 / 25 * 3.5 = 35.00 -> 3500 cents
+
+def test_amount_grocery_estimate():
+    amount = AmountModel(
+        grocery_estimate=GroceryEstimate(people=3, cost_per_person_per_period=100.0)
+    )
+    val = get_amount(amount)
+    assert val == 30000
+
+def test_amount_distributions():
+    rng = np.random.default_rng(42)
+    amount = AmountModel(normal=[100.0, 10.0])
+    val = get_amount(amount, rng)
+    # Using fixed seed 42
+    assert isinstance(val, int)
+
+def test_include_exclude_logic(tmp_path):
+    # Create mock defaults
+    defaults_dir = tmp_path / "defaults"
+    defaults_dir.mkdir()
+
+    with open(defaults_dir / "test_inc.yaml", "w") as f:
+        f.write("""
+flows:
+  - name: IncFlow
+    type: expense
+    from: checking
+    schedule: {monthly: 1}
+    amount: {fixed: 100}
+  - name: ExcludedFlow
+    type: expense
+    from: checking
+    schedule: {monthly: 1}
+    amount: {fixed: 50}
+""")
+
+    scenario_file = tmp_path / "scenario.yaml"
+    with open(scenario_file, "w") as f:
+        f.write(f"""
+start: 2026-01-01
+days: 30
+include:
+  - defaults/test_inc.yaml
+exclude:
+  - ExcludedFlow
+accounts:
+  checking: {{balance: 1000}}
+flows: []
+""")
+
+    # Save original dir and cd to tmp_path so relative include works
+    orig_dir = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        scenario = load_scenario("scenario.yaml")
+        assert len(scenario.flows) == 1
+        assert scenario.flows[0].name == "IncFlow"
+    finally:
+        os.chdir(orig_dir)
+
 def test_engine_run():
     scenario = load_scenario('scenarios/example_mvp.yaml')
     ledger = run(scenario)

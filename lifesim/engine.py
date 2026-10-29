@@ -4,8 +4,11 @@ from .schedule import should_fire
 from .amounts import get_amount
 from .ledger import Ledger
 
+import numpy as np
+
 def run(scenario: ScenarioModel) -> Ledger:
     ledger = Ledger()
+    rng = np.random.default_rng(scenario.seed)
 
     balances = {
         name: int(round(acc.balance * 100))
@@ -17,7 +20,7 @@ def run(scenario: ScenarioModel) -> Ledger:
     for _ in range(scenario.days):
         for flow in scenario.flows:
             if should_fire(flow.schedule, current_date, scenario.start):
-                amount = get_amount(flow.amount)
+                amount = get_amount(flow.amount, rng)
                 if flow.type == 'income':
                     account = flow.to_account or 'checking'
                     if account in balances:
