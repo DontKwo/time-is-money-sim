@@ -31,11 +31,13 @@ def should_fire(schedule: ScheduleModel, current_date: date, start_date: date) -
             return True
 
     if schedule.once is not None:
-        try:
-            once_date = date.fromisoformat(schedule.once)
-            if current_date == once_date:
-                return True
-        except ValueError:
-            pass
+        if not hasattr(schedule, "_once_date_parsed"):
+            try:
+                schedule._once_date_parsed = date.fromisoformat(schedule.once)
+            except ValueError:
+                schedule._once_date_parsed = None
+
+        if schedule._once_date_parsed is not None and current_date == schedule._once_date_parsed:
+            return True
 
     return False
