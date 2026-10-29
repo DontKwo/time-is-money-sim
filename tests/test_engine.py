@@ -1,3 +1,7 @@
+import os
+import numpy as np
+from lifesim.config import AmountModel, GasEstimate, GroceryEstimate
+from lifesim.amounts import get_amount
 import pytest
 from datetime import date
 from lifesim.config import ScheduleModel, load_scenario
@@ -20,10 +24,6 @@ def test_schedule_weekly():
     assert should_fire(schedule, date(2026, 1, 3), start_date) == False # Saturday
     assert should_fire(schedule, date(2026, 1, 9), start_date) == True # Next Friday
 
-import os
-from lifesim.config import AmountModel, GasEstimate, GroceryEstimate
-from lifesim.amounts import get_amount
-import numpy as np
 
 def test_amount_gas_estimate():
     amount = AmountModel(
@@ -182,3 +182,14 @@ flows:
         assert fee_tx.iloc[0]['balance'] == -135.0
     finally:
         os.chdir(orig_dir)
+
+def test_schedule_yearly():
+    schedule = ScheduleModel(yearly={'month': 2, 'day': 29})
+    start_date = date(2023, 1, 1)
+
+    # Leap year: 2024
+    assert should_fire(schedule, date(2024, 2, 28), start_date) == False
+    assert should_fire(schedule, date(2024, 2, 29), start_date) == True
+
+    # Non-leap year: 2025
+    assert should_fire(schedule, date(2025, 2, 28), start_date) == True
