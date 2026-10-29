@@ -1,0 +1,36 @@
+flows:
+  - name: Rent
+    type: expense
+    from: checking
+    schedule:
+      monthly: 1
+    amount:
+      fixed: 1800
+  - name: Electricity
+    type: expense
+    from: checking
+    schedule:
+      monthly: 12
+    amount:
+      normal: [110, 30]
+  - name: Water and sewer
+    type: expense
+    from: checking
+    schedule:
+      monthly: 20
+    amount:
+      normal: [60, 10]
+  - name: Internet
+    type: expense
+    from: checking
+    schedule:
+      monthly: 5
+    amount:
+      fixed: 70
+  - name: Renter's Insurance
+    type: expense
+    from: checking
+    schedule:
+      monthly: 1
+    amount:
+      fixed: 25

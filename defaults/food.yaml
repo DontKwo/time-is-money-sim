@@ -1,0 +1,17 @@
+flows:
+  - name: Groceries
+    type: expense
+    from: checking
+    schedule:
+      weekly: sat
+    amount:
+      grocery_estimate:
+        people: 2
+        cost_per_person_per_period: 75.0
+  - name: Eating out
+    type: expense
+    from: checking
+    schedule:
+      weekly: fri
+    amount:
+      lognormal: [3.5, 0.5] # Approx $35 median

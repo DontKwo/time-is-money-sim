@@ -1,0 +1,8 @@
+flows:
+  - name: Paycheck
+    type: income
+    to: checking
+    schedule:
+      weekly: fri
+    amount:
+      fixed: 2000
