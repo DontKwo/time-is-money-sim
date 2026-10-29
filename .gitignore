@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+ledger.csv
+balances.png
+dump.txt
+dump2.txt
+dump_md.py
+parse2.py
+parse_doc.py
