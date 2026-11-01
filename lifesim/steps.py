@@ -7,6 +7,7 @@ from .config import PolicyModel, ScenarioModel
 from .schedule import should_fire, shift_date
 from .amounts import resolve_flow_amount_cents
 from .macro import MacroState
+from .rmd import get_rmd_age, compute_rmd_cents
 from .taxes import YearTaxAccumulator, compute_april_settlement_cents
 from .payroll import (
     PayrollState,
@@ -842,3 +843,54 @@ def step_12_snapshot_and_goals(
         annual_expense_estimate,
         scenario.accounts,
     )
+
+
+def step_rmd(
+    current_date: date,
+    scenario: ScenarioModel,
+    balances: Dict[str, int],
+    ledger: "Ledger",
+    payroll_state: PayrollState,
+    prior_year_balances: Dict[str, int],
+) -> None:
+    # Check for RMDs on Dec 1st each year
+    if current_date.month == 12 and current_date.day == 1:
+        if scenario.rmd_enabled and scenario.birth_date is not None:
+            age = current_date.year - scenario.birth_date.year
+            # simple age calculation for the year
+
+            rmd_age = get_rmd_age(scenario.birth_date.year)
+            if age >= rmd_age:
+                target_account = scenario.rmd_target_account
+                for account_name, account_config in scenario.accounts.items():
+                    if account_config.kind in ("traditional_401k", "traditional_ira"):
+                        prior_balance_cents = prior_year_balances.get(account_name, 0)
+                        if prior_balance_cents > 0:
+                            rmd_cents = compute_rmd_cents(age, prior_balance_cents)
+                            # Cannot withdraw more than current balance
+                            current_balance_cents = balances.get(account_name, 0)
+                            if current_balance_cents > 0:
+                                withdraw_cents = min(rmd_cents, current_balance_cents)
+                                if withdraw_cents > 0:
+                                    balances[account_name] -= withdraw_cents
+                                    balances[target_account] = balances.get(target_account, 0) + withdraw_cents
+                                    payroll_state.ytd_taxable_ordinary_cents += withdraw_cents
+
+                                    ledger.append(
+                                        current_date,
+                                        f"RMD from {account_name}",
+                                        -withdraw_cents,
+                                        account_name,
+                                        balances[account_name],
+                                        category="rmd",
+                                        tx_kind="rmd",
+                                    )
+                                    ledger.append(
+                                        current_date,
+                                        f"RMD into {target_account}",
+                                        withdraw_cents,
+                                        target_account,
+                                        balances[target_account],
+                                        category="rmd",
+                                        tx_kind="rmd",
+                                    )

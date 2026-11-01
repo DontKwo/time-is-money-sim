@@ -551,6 +551,9 @@ class ScenarioModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     start: date
+    birth_date: Optional[date] = None
+    rmd_enabled: bool = False
+    rmd_target_account: str = "checking"
     days: Optional[int] = None
     end: Optional[date] = None
     seed: Optional[int] = 42
@@ -648,6 +651,9 @@ class ScenarioModel(BaseModel):
 
         if self.taxes is not None:
             check_account_name("taxes", "taxes", self.taxes.settlement_account)
+
+        if self.rmd_enabled:
+            check_account_name("scenario", "rmd", self.rmd_target_account)
 
         for goal in self.goals:
             if goal.kind == "account_balance":
