@@ -11,3 +11,6 @@ dump2.txt
 dump_md.py
 parse2.py
 parse_doc.py
+tasks.json
+.orchestrator_state.json
+
