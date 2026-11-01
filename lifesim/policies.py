@@ -389,6 +389,57 @@ def apply_retirement_drawdown(
     return pulled_total
 
 
+def apply_roth_conversion_ladder(
+    policy: PolicyModel,
+    balances: Dict[str, int],
+    ledger: Any,
+    current_date: date,
+    payroll_state: Any,
+    account_manager: Any,
+) -> int:
+    from_acc = policy.from_account or "traditional_401k"
+    to_acc = policy.to_account or "roth_ira"
+
+    conversion_dollars = policy.conversion_amount
+    if conversion_dollars is None or conversion_dollars <= 0:
+        return 0
+
+    conversion_cents = int(round(conversion_dollars * 100.0))
+    available_cents = max(0, balances.get(from_acc, 0))
+    transfer_cents = min(conversion_cents, available_cents)
+
+    if transfer_cents <= 0:
+        return 0
+
+    balances[from_acc] -= transfer_cents
+    balances[to_acc] = balances.get(to_acc, 0) + transfer_cents
+
+    if payroll_state:
+        payroll_state.ytd_taxable_ordinary_cents += transfer_cents
+
+    ledger.append(
+        current_date,
+        "Roth IRA Conversion",
+        -transfer_cents,
+        from_acc,
+        balances[from_acc],
+        tx_kind="transfer"
+    )
+    ledger.append(
+        current_date,
+        "Roth IRA Conversion",
+        transfer_cents,
+        to_acc,
+        balances[to_acc],
+        tx_kind="transfer"
+    )
+
+    if account_manager and hasattr(account_manager, "roth_conversion_seasoning"):
+        account_manager.roth_conversion_seasoning.append((current_date, transfer_cents))
+
+    return transfer_cents
+
+
 def apply_sinking_fund(
     policy: PolicyModel,
     balances: Dict[str, int],
