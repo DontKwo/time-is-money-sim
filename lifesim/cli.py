@@ -1,7 +1,10 @@
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Optional, List
+import pydantic
+import yaml
 
 from lifesim.config import load_scenario
 from lifesim.engine import run
@@ -45,8 +48,24 @@ def main() -> None:
     parser.add_argument("--out-compare-plot", type=str, default="comparison.png", help="Comparison plot path")
     parser.add_argument("--sensitivity", action="store_true", help="Run tornado sensitivity analysis")
     parser.add_argument("--out-tornado-plot", type=str, default="sensitivity.png", help="Tornado plot path")
+    parser.add_argument("--validate", action="store_true", help="Validate scenario file without running simulation")
 
     args = parser.parse_args()
+
+    # Handle scenario validation mode
+    if args.validate:
+        scenario_file_path = Path(args.scenario)
+        if not scenario_file_path.exists():
+            print(f"Error: Scenario file {args.scenario} not found.")
+            sys.exit(1)
+        try:
+            overrides_arg: Optional[List[str]] = args.overrides if args.overrides else None
+            load_scenario(args.scenario, overrides=overrides_arg)
+            print(f"Validation successful: {args.scenario} is valid.")
+            sys.exit(0)
+        except (yaml.YAMLError, pydantic.ValidationError, ValueError) as validation_err:
+            print(f"Validation error: {validation_err}")
+            sys.exit(1)
 
     # Verify scenario path exists
     scenario_path = Path(args.scenario)
