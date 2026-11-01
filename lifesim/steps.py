@@ -54,6 +54,8 @@ def step_1_macro_rollover(
         tax_state.ytd_taxable_interest_cents = accounts_manager.ytd_taxable_interest_cents
         tax_state.ytd_qualified_dividends_cents = accounts_manager.ytd_qualified_dividends_cents
         tax_state.ytd_realized_cap_gains_cents = accounts_manager.ytd_realized_cap_gains_cents
+        tax_state.ytd_mortgage_interest_cents = accounts_manager.ytd_mortgage_interest_cents
+        tax_state.ytd_property_tax_cents = accounts_manager.ytd_property_tax_cents
         tax_state.ytd_fed_withheld_cents = payroll_state.ytd_fed_withheld_cents
         tax_state.ytd_state_withheld_cents = payroll_state.ytd_state_withheld_cents
         tax_state.ytd_fica_withheld_cents = payroll_state.ytd_fica_withheld_cents
@@ -65,6 +67,8 @@ def step_1_macro_rollover(
         accounts_manager.ytd_taxable_interest_cents = 0
         accounts_manager.ytd_qualified_dividends_cents = 0
         accounts_manager.ytd_realized_cap_gains_cents = 0
+        accounts_manager.ytd_mortgage_interest_cents = 0
+        accounts_manager.ytd_property_tax_cents = 0
         annual_contributions_ytd.clear()
 
     macro_state.advance_day(current_date)
@@ -193,7 +197,32 @@ def step_4_income_and_dividends(
     default_account: str,
     policies: List[PolicyModel],
     annual_contributions_ytd: Dict[str, int],
+    payroll_state: PayrollState,
 ) -> None:
+    # Process Social Security benefit deposits on day 3
+    if scenario.social_security and scenario.social_security.enabled:
+        social_sec_config = scenario.social_security
+        if current_date.day == 3 and current_date >= social_sec_config.start_date:
+            start_marker = (social_sec_config.start_date.month, social_sec_config.start_date.day)
+            prior_to_anniversary = 1 if (current_date.month, current_date.day) < start_marker else 0
+            years_elapsed = max(0, current_date.year - social_sec_config.start_date.year - prior_to_anniversary)
+            cola_factor = (1.0 + social_sec_config.annual_cola) ** years_elapsed
+            benefit_cents = int(round(social_sec_config.monthly_benefit * cola_factor * 100.0))
+            target_account = social_sec_config.to_account or default_account
+            if target_account in balances:
+                accounts_manager.record_deposit(target_account, benefit_cents)
+                ledger.append(
+                    current_date,
+                    "Social Security Benefit",
+                    benefit_cents,
+                    target_account,
+                    balances[target_account],
+                    category="income",
+                    tx_kind="income",
+                )
+                taxable_ss_cents = int(round(benefit_cents * social_sec_config.taxable_pct))
+                payroll_state.ytd_taxable_ordinary_cents += taxable_ss_cents
+
     # Process regular income flows and trigger matching payday_skim policies
     for flow in scenario.flows:
         if not flow.enabled or flow.type != "income":
@@ -261,7 +290,7 @@ def step_5_tax_settlement(
     # Process annual tax settlement or refund on shifted April 15
     if scenario.taxes and scenario.taxes.enabled and scenario.taxes.april_true_up:
         base_tax_day = date(current_date.year, 4, 15)
-        shifted_tax_day = shift_date(base_tax_day, weekend_rule="after", respect_us_holidays=True)
+        shifted_tax_day = shift_date(base_tax_day, weekend_rule="after", respect_holidays=True)
         if current_date == shifted_tax_day:
             prior_tax_year = current_date.year - 1
             if prior_tax_year in prior_year_tax_states:
@@ -429,11 +458,7 @@ def step_7_expense_flows(
 
             # Overdraft limit check
             overdraft_limit_dollars = account_model.overdraft_limit
-            limit_cents = (
-                int(round(overdraft_limit_dollars * 100))
-                if overdraft_limit_dollars is not None
-                else None
-            )
+            limit_cents = int(round(overdraft_limit_dollars * 100)) if overdraft_limit_dollars is not None else None
             if limit_cents is not None and (balances[account_name] - amount_cents) < -limit_cents:
                 accounts_manager.declined_tx_count += 1
                 continue
@@ -514,11 +539,7 @@ def step_8_transfers(
 
             source_config = scenario.accounts.get(source_account)
             overdraft_limit_dollars = source_config.overdraft_limit if source_config else None
-            limit_cents = (
-                int(round(overdraft_limit_dollars * 100))
-                if overdraft_limit_dollars is not None
-                else None
-            )
+            limit_cents = int(round(overdraft_limit_dollars * 100)) if overdraft_limit_dollars is not None else None
             if limit_cents is not None and (balances[source_account] - amount_cents) < -limit_cents:
                 continue
 
@@ -538,9 +559,7 @@ def step_8_transfers(
 
             accounts_manager.record_withdrawal(source_account, allowed_cents)
             accounts_manager.record_deposit(destination_account, allowed_cents)
-            annual_contributions_ytd[destination_account] = (
-                annual_contributions_ytd.get(destination_account, 0) + allowed_cents
-            )
+            annual_contributions_ytd[destination_account] = annual_contributions_ytd.get(destination_account, 0) + allowed_cents
             ledger.append(
                 current_date,
                 flow.name,

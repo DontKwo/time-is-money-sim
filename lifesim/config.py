@@ -276,8 +276,8 @@ class Retirement401kSpec(BaseModel):
     roth_fixed: float = 0.0
     auto_escalate_pct_per_year: float = 0.0
     auto_escalate_max_pct: float = 1.0
-    traditional_account: str = "traditional_401k"
-    roth_account: str = "roth_401k"
+    traditional_account: Optional[str] = "traditional_401k"
+    roth_account: Optional[str] = None
     employer_match: Optional[EmployerMatchSpec] = None
     annual_employee_limit: float = 23500.0
     catch_up_limit: float = 0.0
@@ -398,9 +398,7 @@ class PolicyModel(BaseModel):
     target_checking_balance: Optional[float] = None
     fixed_withdrawal: Optional[float] = None
     swr_annual_pct: Optional[float] = None
-    withdrawal_order: List[str] = Field(
-        default_factory=lambda: ["savings", "investment", "traditional_401k", "traditional_ira", "roth_401k", "roth_ira", "hsa"]
-    )
+    withdrawal_order: Optional[List[str]] = None
     pretax_gross_up_rate: float = 0.15
     target_flows: List[str] = Field(default_factory=list)
     lookahead_days: int = 365
@@ -524,8 +522,9 @@ def default_single_ltcg_brackets() -> List[TaxBracket]:
 
 class TaxConfigModel(BaseModel):
     enabled: bool = False
-    filing_status: Literal["single", "married_joint", "head_of_household"] = "single"
+    filing_status: Literal["single", "married_joint", "married_separate", "head_of_household"] = "single"
     standard_deduction: Optional[float] = None
+    salt_cap: Optional[float] = None
     federal_brackets: List[TaxBracket] = Field(default_factory=default_single_federal_brackets)
     ltcg_brackets: List[TaxBracket] = Field(default_factory=default_single_ltcg_brackets)
     state_flat_rate: float = 0.0
@@ -534,6 +533,15 @@ class TaxConfigModel(BaseModel):
     additional_medicare_threshold: float = 200000.0
     april_true_up: bool = True
     settlement_account: str = "checking"
+
+
+class SocialSecurityModel(BaseModel):
+    enabled: bool = False
+    start_date: date
+    monthly_benefit: float
+    annual_cola: float = 0.025
+    to_account: str = "checking"
+    taxable_pct: float = 0.85
 
 
 class ScenarioModel(BaseModel):
@@ -550,6 +558,7 @@ class ScenarioModel(BaseModel):
     auto_transfers: List[AutoTransferModel] = Field(default_factory=list)
     inflation: InflationModel = Field(default_factory=InflationModel)
     taxes: Optional[TaxConfigModel] = None
+    social_security: Optional[SocialSecurityModel] = None
     paychecks: List[PaycheckModel] = Field(default_factory=list)
     rsu_grants: List[RSUGrantModel] = Field(default_factory=list)
     policies: List[PolicyModel] = Field(default_factory=list)
@@ -575,6 +584,72 @@ class ScenarioModel(BaseModel):
                 raise ValueError(f"end date {self.end} must be on or after start date {self.start}")
             if self.days != expected_days:
                 raise ValueError(f"days ({self.days}) does not match start-to-end span ({expected_days})")
+        return self
+
+    @model_validator(mode="after")
+    def validate_referential_integrity(self) -> "ScenarioModel":
+        known_accounts: set[str] = set(self.accounts.keys())
+        for event in self.events:
+            if event.open_account:
+                known_accounts.update(event.open_account.keys())
+
+        def check_account_name(entity_type: str, entity_name: str, account_name: Optional[str]) -> None:
+            if account_name is not None and account_name not in known_accounts:
+                raise ValueError(
+                    f"{entity_type} '{entity_name}' references non-existent account '{account_name}'"
+                )
+
+        def check_account_names(entity_type: str, entity_name: str, account_names: Optional[List[str]]) -> None:
+            if account_names:
+                for target_account in account_names:
+                    check_account_name(entity_type, entity_name, target_account)
+
+        for flow in self.flows:
+            check_account_name("flow", flow.name, flow.from_account)
+            check_account_name("flow", flow.name, flow.to_account)
+
+        for transfer in self.auto_transfers:
+            check_account_name("auto_transfer", f"{transfer.from_account}->{transfer.to_account}", transfer.from_account)
+            check_account_name("auto_transfer", f"{transfer.from_account}->{transfer.to_account}", transfer.to_account)
+
+        for paycheck in self.paychecks:
+            for deposit in paycheck.direct_deposit:
+                check_account_name("paycheck", paycheck.name, deposit.to)
+            if paycheck.hsa is not None:
+                check_account_name("paycheck", paycheck.name, paycheck.hsa.to_account)
+            if paycheck.retirement_401k is not None:
+                check_account_name("paycheck", paycheck.name, paycheck.retirement_401k.traditional_account)
+                check_account_name("paycheck", paycheck.name, paycheck.retirement_401k.roth_account)
+                if paycheck.retirement_401k.employer_match is not None:
+                    check_account_name(
+                        "paycheck",
+                        paycheck.name,
+                        paycheck.retirement_401k.employer_match.to_account,
+                    )
+            if paycheck.espp is not None:
+                check_account_name("paycheck", paycheck.name, paycheck.espp.to_account)
+
+        for rsu_grant in self.rsu_grants:
+            check_account_name("rsu_grant", rsu_grant.name, rsu_grant.to_account)
+
+        for policy in self.policies:
+            check_account_name("policy", policy.name, policy.to_account)
+            check_account_name("policy", policy.name, policy.from_account)
+            check_account_names("policy", policy.name, policy.from_accounts)
+            check_account_names("policy", policy.name, policy.target_accounts)
+            for allocation in policy.allocations:
+                check_account_name("policy", policy.name, allocation.to_account)
+                check_account_name("policy", policy.name, allocation.overflow_to_account)
+            check_account_name("policy", policy.name, policy.overflow_to_account)
+            check_account_names("policy", policy.name, policy.withdrawal_order)
+
+        if self.taxes is not None:
+            check_account_name("taxes", "taxes", self.taxes.settlement_account)
+
+        for goal in self.goals:
+            if goal.kind == "account_balance":
+                check_account_name("goal", goal.name, goal.account)
+
         return self
 
 
@@ -646,6 +721,7 @@ def load_scenario(path: str, overrides: Optional[List[str]] = None) -> ScenarioM
     merged_policies = []
     merged_events = []
     merged_goals = []
+    merged_social_security = None
 
     for inc in includes:
         if os.path.isabs(inc):
@@ -671,6 +747,8 @@ def load_scenario(path: str, overrides: Optional[List[str]] = None) -> ScenarioM
                 merged_events.extend(inc_data["events"])
             if "goals" in inc_data:
                 merged_goals.extend(inc_data["goals"])
+            if "social_security" in inc_data:
+                merged_social_security = inc_data["social_security"]
 
     if "accounts" in data:
         merged_accounts.update(data["accounts"])
@@ -686,6 +764,8 @@ def load_scenario(path: str, overrides: Optional[List[str]] = None) -> ScenarioM
         merged_events.extend(data["events"])
     if "goals" in data:
         merged_goals.extend(data["goals"])
+    if "social_security" in data:
+        merged_social_security = data["social_security"]
 
     filtered_flows = [flow for flow in merged_flows if flow["name"] not in excludes]
 
@@ -707,6 +787,8 @@ def load_scenario(path: str, overrides: Optional[List[str]] = None) -> ScenarioM
     data["policies"] = merged_policies
     data["events"] = merged_events
     data["goals"] = merged_goals
+    if merged_social_security is not None:
+        data["social_security"] = merged_social_security
 
     if overrides is not None:
         data = apply_cli_overrides(data, overrides)

@@ -70,7 +70,7 @@ def run(scenario: ScenarioModel) -> Ledger:
         )
         step_4_income_and_dividends(
             current_date, scenario, accounts_manager, balances, ledger, macro_state, flow_fire_counts,
-            flow_rngs, last_executed_flow_cents, default_account, policies, annual_contributions_ytd
+            flow_rngs, last_executed_flow_cents, default_account, policies, annual_contributions_ytd, payroll_state
         )
         step_5_tax_settlement(
             current_date, scenario, macro_state, prior_year_tax_states, default_account, balances, ledger

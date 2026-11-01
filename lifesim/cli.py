@@ -1,7 +1,10 @@
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Optional, List
+import pydantic
+import yaml
 
 from lifesim.config import load_scenario
 from lifesim.engine import run
@@ -16,6 +19,7 @@ from lifesim.plots import (
 )
 from lifesim.montecarlo import run_monte_carlo
 from lifesim.compare import compare_scenarios, run_sensitivity_analysis
+from lifesim.db import export_to_sqlite
 
 
 def main() -> None:
@@ -45,8 +49,25 @@ def main() -> None:
     parser.add_argument("--out-compare-plot", type=str, default="comparison.png", help="Comparison plot path")
     parser.add_argument("--sensitivity", action="store_true", help="Run tornado sensitivity analysis")
     parser.add_argument("--out-tornado-plot", type=str, default="sensitivity.png", help="Tornado plot path")
+    parser.add_argument("--validate", action="store_true", help="Validate scenario file without running simulation")
+    parser.add_argument("--out-sqlite", type=str, default=None, help="Output SQLite database path")
 
     args = parser.parse_args()
+
+    # Handle scenario validation mode
+    if args.validate:
+        scenario_file_path = Path(args.scenario)
+        if not scenario_file_path.exists():
+            print(f"Error: Scenario file {args.scenario} not found.")
+            sys.exit(1)
+        try:
+            overrides_arg: Optional[List[str]] = args.overrides if args.overrides else None
+            load_scenario(args.scenario, overrides=overrides_arg)
+            print(f"Validation successful: {args.scenario} is valid.")
+            sys.exit(0)
+        except (yaml.YAMLError, pydantic.ValidationError, ValueError) as validation_err:
+            print(f"Validation error: {validation_err}")
+            sys.exit(1)
 
     # Verify scenario path exists
     scenario_path = Path(args.scenario)
@@ -71,6 +92,9 @@ def main() -> None:
     if args.out_daily is not None:
         daily_dataframe = ledger.daily_df()
         daily_dataframe.to_csv(args.out_daily, index=False)
+
+    if args.out_sqlite is not None:
+        export_to_sqlite(ledger, args.out_sqlite)
 
     if args.out_summary is not None:
         summary_payload = {
