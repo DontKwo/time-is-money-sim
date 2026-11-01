@@ -16,6 +16,7 @@ from .steps import (
     step_4_income_and_dividends, step_5_tax_settlement, step_6_loan_payments,
     step_7_expense_flows, step_8_transfers, step_9_credit_cards,
     step_10_policies, step_11_returns_and_interest, step_12_snapshot_and_goals,
+    step_rmd,
 )
 
 
@@ -57,6 +58,8 @@ def run(scenario: ScenarioModel) -> Ledger:
     goal_tracker = GoalTracker(scenario.goals)
     daily_expenses_history: List[int] = []
 
+    prior_year_balances: Dict[str, int] = {account_name: balance_cents for account_name, balance_cents in balances.items()}
+
     for day_index in range(scenario.days):
         current_date = scenario.start + timedelta(days=day_index)
         current_tax_year, tax_state = step_1_macro_rollover(
@@ -91,10 +94,17 @@ def run(scenario: ScenarioModel) -> Ledger:
             annual_contributions_ytd, monthly_debt_payments_made, daily_expenses_history, payroll_state
         )
         step_11_returns_and_interest(current_date, accounts_manager, ledger)
+
+        step_rmd(current_date, scenario, balances, ledger, payroll_state, prior_year_balances)
+
         step_12_snapshot_and_goals(
             current_date, scenario, accounts_manager, balances, ledger, goal_tracker, daily_expenses_history
         )
         ledger.inflation_indices[current_date] = macro_state.inflation_index
+
+        if current_date.month == 12 and current_date.day == 31:
+            for acc in scenario.accounts:
+                prior_year_balances[acc] = balances.get(acc, 0)
 
     ledger.goal_results, ledger.metrics = goal_tracker.results, compute_summary(scenario, ledger)
     return ledger

@@ -439,3 +439,82 @@ def test_end_to_end_accounting_conservation() -> None:
     assert "liquidity" in ledger.metrics
     assert len(ledger.goal_results) == 1
     assert ledger.goal_results[0]["name"] == "Reach 10k Liquid"
+
+def test_rmd_calculation_and_withdrawal():
+    # Born 1950 (RMD age 72).
+    # Turn 72 in 2022. RMD starts year 2022.
+
+    scenario = ScenarioModel(
+        start=date(2021, 1, 1),
+        days=365 * 3, # Run through end of 2023
+        birth_date=date(1950, 6, 15),
+        rmd_enabled=True,
+        rmd_target_account="checking",
+        accounts={
+            "checking": {
+                "kind": "checking",
+                "balance": 1000.0,
+            },
+            "traditional_401k": {
+                "kind": "traditional_401k",
+                "balance": 27400.0,
+                "annual_growth_rate": 0.0, # no growth for easier math
+            }
+        },
+        flows=[]
+    )
+
+    ledger = run(scenario)
+    df = ledger.to_df()
+
+    # RMD should occur on Dec 1st.
+    # In 2021, age is 71 -> No RMD
+    rmd_2021 = df[(df['date'] == date(2021, 12, 1)) & (df['category'] == 'rmd')]
+    assert len(rmd_2021) == 0
+
+    # In 2022, age is 72. RMD statutory age reached.
+    # Prior year balance is 27400 (from Jan 1 start because no growth).
+    # Age 72 factor is 27.4. RMD = 27400 / 27.4 = 1000.
+    rmd_2022 = df[(df['date'] == date(2022, 12, 1)) & (df['category'] == 'rmd')]
+    assert len(rmd_2022) == 2 # withdrawal and deposit
+
+    withdrawal_2022 = rmd_2022[rmd_2022['amount'] < 0].iloc[0]
+    deposit_2022 = rmd_2022[rmd_2022['amount'] > 0].iloc[0]
+
+    assert withdrawal_2022['amount'] == -1000.0
+    assert withdrawal_2022['account'] == 'traditional_401k'
+    assert withdrawal_2022['balance'] == 26400.0
+
+    assert deposit_2022['amount'] == 1000.0
+    assert deposit_2022['account'] == 'checking'
+    assert deposit_2022['balance'] == 2000.0
+
+    # In 2023, age is 73. Factor is 26.5.
+    # Prior year balance is 26400. RMD = 26400 / 26.5 = 996.226... -> 996.23
+    # Actually it's 2640000 cents / 26.5 = 99622.641... => 99623 cents -> 996.23
+    rmd_2023 = df[(df['date'] == date(2023, 12, 1)) & (df['category'] == 'rmd')]
+    assert len(rmd_2023) == 2
+
+    withdrawal_2023 = rmd_2023[rmd_2023['amount'] < 0].iloc[0]
+    assert pytest.approx(withdrawal_2023['amount'], abs=0.01) == -996.23
+
+def test_rmd_disabled():
+    scenario = ScenarioModel(
+        start=date(2022, 1, 1),
+        days=365,
+        birth_date=date(1950, 6, 15),
+        rmd_enabled=False,
+        accounts={
+            "checking": {"kind": "checking", "balance": 1000.0},
+            "traditional_401k": {"kind": "traditional_401k", "balance": 27400.0}
+        },
+        flows=[]
+    )
+    ledger = run(scenario)
+    df = ledger.to_df()
+
+    if len(df) > 0 and 'category' in df.columns:
+        rmd_tx = df[df['category'] == 'rmd']
+        assert len(rmd_tx) == 0
+    else:
+        assert True
