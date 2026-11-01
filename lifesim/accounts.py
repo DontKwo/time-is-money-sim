@@ -8,7 +8,7 @@ from .schedule import resolve_day_of_month
 from .rng import derive_rng
 
 LIABILITY_KINDS = {"credit_card", "loan", "mortgage", "student_loan", "auto_loan"}
-INVESTMENT_KINDS = {"investment", "traditional_401k", "roth_401k", "traditional_ira", "roth_ira", "hsa", "529"}
+INVESTMENT_KINDS = {"investment", "traditional_401k", "roth_401k", "traditional_ira", "roth_ira", "hsa", "529", "college_529"}
 
 
 class AccountManager:
@@ -48,6 +48,8 @@ class AccountManager:
         self.ytd_taxable_interest_cents: int = 0
         self.ytd_qualified_dividends_cents: int = 0
         self.ytd_realized_cap_gains_cents: int = 0
+        self.ytd_529_contributions_cents: Dict[str, int] = {}
+        self.ytd_529_non_qualified_earnings_cents: int = 0
 
         for name, config in accounts.items():
             self.account_rngs[name] = derive_rng(base_seed, "account", name)
@@ -64,7 +66,7 @@ class AccountManager:
             else:
                 self.balances[name] = int(round(config.balance * 100.0))
 
-            if config.kind == "investment":
+            if config.kind in ("investment", "college_529"):
                 if config.initial_cost_basis is not None:
                     self.cost_bases[name] = int(round(config.initial_cost_basis * 100.0))
                 else:
@@ -115,7 +117,9 @@ class AccountManager:
     def record_deposit(self, account_name: str, amount_cents: int) -> None:
         self.balances[account_name] = self.balances.get(account_name, 0) + amount_cents
         config = self.configs.get(account_name)
-        if config and config.kind == "investment":
+        if config and config.kind == "college_529":
+            self.ytd_529_contributions_cents[account_name] = self.ytd_529_contributions_cents.get(account_name, 0) + amount_cents
+        if config and config.kind in ("investment", "college_529"):
             self.cost_bases[account_name] = self.cost_bases.get(account_name, 0) + amount_cents
         if config and config.kind == "credit_card":
             due_remaining = self.remaining_statement_due_cents.get(account_name, 0)
@@ -123,9 +127,9 @@ class AccountManager:
             paid_so_far = self.payments_since_statement_cents.get(account_name, 0)
             self.payments_since_statement_cents[account_name] = paid_so_far + amount_cents
 
-    def record_withdrawal(self, account_name: str, amount_cents: int) -> None:
+    def record_withdrawal(self, account_name: str, amount_cents: int, category: str = "", tags: Optional[List[str]] = None) -> None:
         config = self.configs.get(account_name)
-        if config and config.kind == "investment":
+        if config and config.kind in ("investment", "college_529"):
             pre_balance = self.balances.get(account_name, 0)
             if pre_balance > 0:
                 fraction_sold = min(1.0, amount_cents / pre_balance)
@@ -133,7 +137,13 @@ class AccountManager:
                 basis_removed = int(round(existing_basis * fraction_sold))
                 realized_gain = amount_cents - basis_removed
                 self.cost_bases[account_name] = max(0, existing_basis - basis_removed)
-                self.ytd_realized_cap_gains_cents += realized_gain
+                if config.kind == "college_529":
+                    tags = tags or []
+                    is_qualified = category == "education" or "529_qualified" in tags
+                    if not is_qualified and realized_gain > 0:
+                        self.ytd_529_non_qualified_earnings_cents += realized_gain
+                else:
+                    self.ytd_realized_cap_gains_cents += realized_gain
         self.balances[account_name] = self.balances.get(account_name, 0) - amount_cents
 
     def charge_credit_card(self, card_name: str, amount_cents: int, category: Optional[str] = None) -> bool:
