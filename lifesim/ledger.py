@@ -1,3 +1,4 @@
+import json
 from datetime import date
 from typing import List, Dict, Any, Optional
 import pandas as pd
@@ -46,3 +47,21 @@ class Ledger:
             indices = {dt: (val / base_factor) for dt, val in indices.items()}
         deflated_records = deflate_daily_records(self.daily_records, indices)
         return pd.DataFrame(deflated_records)
+
+    def export_jsonl(self, filepath: str) -> None:
+        with open(filepath, "w", encoding="utf-8") as file:
+            for record in self.records:
+                record_copy = dict(record)
+                if isinstance(record_copy.get("date"), date):
+                    record_copy["date"] = record_copy["date"].isoformat()
+                json_line = json.dumps(record_copy)
+                file.write(json_line + "\n")
+
+        daily_filepath = filepath.replace(".jsonl", "_daily.jsonl") if filepath.endswith(".jsonl") else filepath + "_daily.jsonl"
+        with open(daily_filepath, "w", encoding="utf-8") as daily_file:
+            for daily_record in self.daily_records:
+                daily_record_copy = dict(daily_record)
+                if isinstance(daily_record_copy.get("date"), date):
+                    daily_record_copy["date"] = daily_record_copy["date"].isoformat()
+                json_line = json.dumps(daily_record_copy)
+                daily_file.write(json_line + "\n")

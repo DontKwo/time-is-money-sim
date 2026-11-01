@@ -380,3 +380,62 @@ flows:
     daily_df = pd.read_csv(out_daily)
     assert not daily_df.empty
     assert "total_net_worth" in daily_df.columns
+
+
+def test_cli_jsonl_export(tmp_path: Path) -> None:
+    scenario_file = tmp_path / "scenario_jsonl.yaml"
+    scenario_file.write_text("""
+start: 2026-01-01
+days: 10
+accounts:
+  checking: {balance: 1000}
+flows:
+  - name: Rent
+    type: expense
+    from: checking
+    schedule: {monthly: 1}
+    amount: {fixed: 100}
+""")
+
+    out_jsonl = tmp_path / "ledger.jsonl"
+
+    test_args = [
+        "lifesim",
+        str(scenario_file),
+        "--out-jsonl", str(out_jsonl),
+    ]
+    with patch.object(sys, "argv", test_args):
+        main()
+
+    assert out_jsonl.exists()
+
+    out_daily_jsonl = tmp_path / "ledger_daily.jsonl"
+    assert out_daily_jsonl.exists()
+
+    with open(out_jsonl, "r", encoding="utf-8") as file_in:
+        lines = file_in.readlines()
+        # 1 flow per month * 1 month out of 10 days? Actually only 1 transaction on start day
+        assert len(lines) == 1
+        for json_line in lines:
+            data = json.loads(json_line)
+            assert "date" in data
+            assert "flow" in data
+            assert "amount" in data
+            assert "account" in data
+            assert "balance" in data
+            assert "category" in data
+            assert "tx_kind" in data
+            assert data["flow"] == "Rent"
+            assert data["amount"] == -100.0  # (amount 100 fixed, amounts are read as dollars directly in config, and stored as amount / 100.0 if passed as cents, but actually the parser multiplies fixed by 100 in engine if it was specified as dollar, wait config says {fixed: 100} meaning $100) -> so -100.0
+            assert data["account"] == "checking"
+            assert data["balance"] == 900.0
+            assert data["tx_kind"] == "flow"
+
+    with open(out_daily_jsonl, "r", encoding="utf-8") as daily_in:
+        daily_lines = daily_in.readlines()
+        assert len(daily_lines) == 10
+        for json_line in daily_lines:
+            daily_data = json.loads(json_line)
+            assert "date" in daily_data
+            assert "total_net_worth" in daily_data
+            assert "checking" in daily_data
