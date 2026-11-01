@@ -16,6 +16,7 @@ from lifesim.plots import (
 )
 from lifesim.montecarlo import run_monte_carlo
 from lifesim.compare import compare_scenarios, run_sensitivity_analysis
+from lifesim.db import export_to_sqlite
 
 
 def main() -> None:
@@ -45,6 +46,7 @@ def main() -> None:
     parser.add_argument("--out-compare-plot", type=str, default="comparison.png", help="Comparison plot path")
     parser.add_argument("--sensitivity", action="store_true", help="Run tornado sensitivity analysis")
     parser.add_argument("--out-tornado-plot", type=str, default="sensitivity.png", help="Tornado plot path")
+    parser.add_argument("--out-sqlite", type=str, default=None, help="Output SQLite database path")
 
     args = parser.parse_args()
 
@@ -71,6 +73,9 @@ def main() -> None:
     if args.out_daily is not None:
         daily_dataframe = ledger.daily_df()
         daily_dataframe.to_csv(args.out_daily, index=False)
+
+    if args.out_sqlite is not None:
+        export_to_sqlite(ledger, args.out_sqlite)
 
     if args.out_summary is not None:
         summary_payload = {
