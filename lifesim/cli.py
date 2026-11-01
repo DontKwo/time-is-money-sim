@@ -54,6 +54,7 @@ def main() -> None:
     parser.add_argument("--validate", action="store_true", help="Validate scenario file without running simulation")
     parser.add_argument("--out-sqlite", type=str, default=None, help="Output SQLite database path")
     parser.add_argument("--out-html", type=str, default=None, help="Output interactive HTML report path")
+    parser.add_argument("--out-jsonl", type=str, default=None, help="Output ledger JSON-Lines path")
     parser.add_argument("--real-dollars", action="store_true", help="Deflate output metrics and charts into constant purchasing power dollars")
 
     args = parser.parse_args()
@@ -114,6 +115,10 @@ def main() -> None:
     if args.out_html is not None:
         print(f"Generating HTML report to {args.out_html}...")
         generate_html_report(scenario, ledger, args.out_html)
+
+    if args.out_jsonl is not None:
+        print(f"Exporting JSON-Lines ledger to {args.out_jsonl}...")
+        ledger.export_jsonl(args.out_jsonl)
 
     if args.out_summary is not None:
         summary_payload = {
