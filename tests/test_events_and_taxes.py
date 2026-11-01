@@ -1,6 +1,7 @@
 from datetime import date
 import numpy as np
 from lifesim.config import (
+    AccountModel,
     TaxBracket,
     TaxConfigModel,
     EventModel,
@@ -11,7 +12,10 @@ from lifesim.config import (
     Retirement401kSpec,
     EmployerMatchSpec,
     VestingSpec,
+    SocialSecurityModel,
+    ScenarioModel,
 )
+from lifesim.engine import run
 from lifesim.taxes import (
     YearTaxAccumulator,
     compute_fica_cents,
@@ -169,3 +173,115 @@ def test_medical_shock_capped_by_oop_max() -> None:
     charge_cents_2 = min(raw_cents, max(0, oop_max_cents - used_oop_2))
     assert charge_cents_2 == 0
 
+
+def test_social_security_monthly_deposit() -> None:
+    scenario = ScenarioModel(
+        start=date(2026, 1, 1),
+        end=date(2026, 4, 30),
+        accounts={"checking": AccountModel(kind="checking", balance=0.0)},
+        social_security=SocialSecurityModel(
+            enabled=True,
+            start_date=date(2026, 2, 1),
+            monthly_benefit=2500.0,
+            annual_cola=0.03,
+            to_account="checking",
+            taxable_pct=0.85,
+        ),
+    )
+    ledger = run(scenario)
+    dataframe = ledger.to_df()
+    ss_records = dataframe[dataframe["flow"] == "Social Security Benefit"]
+
+    # Only February 3, March 3, and April 3 should have fired
+    assert len(ss_records) == 3
+    assert list(ss_records["date"]) == [date(2026, 2, 3), date(2026, 3, 3), date(2026, 4, 3)]
+    assert all(record == 2500.0 for record in ss_records["amount"])
+    assert all(record == "checking" for record in ss_records["account"])
+    assert all(record == "income" for record in ss_records["category"])
+
+
+def test_social_security_cola_annual_increase() -> None:
+    scenario = ScenarioModel(
+        start=date(2026, 1, 1),
+        end=date(2028, 12, 31),
+        accounts={"checking": AccountModel(kind="checking", balance=0.0)},
+        social_security=SocialSecurityModel(
+            enabled=True,
+            start_date=date(2026, 6, 1),
+            monthly_benefit=3000.0,
+            annual_cola=0.05,
+            to_account="checking",
+            taxable_pct=0.85,
+        ),
+    )
+    ledger = run(scenario)
+    dataframe = ledger.to_df()
+    ss_records = dataframe[dataframe["flow"] == "Social Security Benefit"]
+
+    # Year 0: Jun 2026 to May 2027 ($3000.00 = 300_000 cents)
+    records_year_0 = ss_records[(ss_records["date"] >= date(2026, 6, 1)) & (ss_records["date"] < date(2027, 6, 1))]
+    assert all(amount == 3000.0 for amount in records_year_0["amount"])
+
+    # Year 1: Jun 2027 to May 2028 (3000 * 1.05 = $3150.00)
+    records_year_1 = ss_records[(ss_records["date"] >= date(2027, 6, 1)) & (ss_records["date"] < date(2028, 6, 1))]
+    assert all(amount == 3150.0 for amount in records_year_1["amount"])
+
+    # Year 2: Jun 2028 to Dec 2028 (3000 * 1.05^2 = $3307.50)
+    records_year_2 = ss_records[(ss_records["date"] >= date(2028, 6, 1))]
+    assert all(amount == 3307.50 for amount in records_year_2["amount"])
+
+
+def test_social_security_tax_treatment() -> None:
+    scenario = ScenarioModel(
+        start=date(2026, 1, 1),
+        end=date(2026, 3, 31),
+        accounts={"checking": AccountModel(kind="checking", balance=0.0)},
+        social_security=SocialSecurityModel(
+            enabled=True,
+            start_date=date(2026, 1, 1),
+            monthly_benefit=2000.0,
+            annual_cola=0.025,
+            to_account="checking",
+            taxable_pct=0.85,
+        ),
+    )
+    ledger = run(scenario)
+    dataframe = ledger.to_df()
+    ss_records = dataframe[dataframe["flow"] == "Social Security Benefit"]
+    assert len(ss_records) == 3
+
+    # Total benefit: 3 * $2,000.00 = $6,000.00 (600_000 cents)
+    # Taxable ordinary: 600_000 * 0.85 = 510_000 cents ($5,100.00)
+    summary_metrics = ledger.metrics
+    assert summary_metrics["cashflow"]["total_income"] == 6000.0
+    assert summary_metrics["cashflow"]["total_spending"] == 0.0
+
+    # Also verify with tax true-up on April 15
+    tax_scenario = ScenarioModel(
+        start=date(2026, 1, 1),
+        end=date(2027, 4, 30),
+        accounts={"checking": AccountModel(kind="checking", balance=0.0)},
+        taxes=TaxConfigModel(
+            enabled=True,
+            standard_deduction=10000.0,
+            federal_brackets=[TaxBracket(rate=0.10, threshold=0.0)],
+            april_true_up=True,
+            settlement_account="checking",
+        ),
+        social_security=SocialSecurityModel(
+            enabled=True,
+            start_date=date(2026, 1, 1),
+            monthly_benefit=2000.0,
+            annual_cola=0.0,
+            to_account="checking",
+            taxable_pct=0.85,
+        ),
+    )
+    tax_ledger = run(tax_scenario)
+    tax_df = tax_ledger.to_df()
+    # 2026 had 12 deposits of $2000 = $24,000 benefit (2_400_000 cents)
+    # Taxable ordinary: 2_400_000 * 0.85 = 2_040_000 cents ($20,400)
+    # After standard deduction of $10,000: $10,400 taxable at 10% = $1,040 tax owed
+    tax_settlement_rows = tax_df[tax_df["flow"] == "Annual Tax True-Up Owed"]
+    assert len(tax_settlement_rows) == 1
+    assert tax_settlement_rows.iloc[0]["amount"] == -1040.0

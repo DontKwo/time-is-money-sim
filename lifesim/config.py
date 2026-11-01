@@ -536,6 +536,15 @@ class TaxConfigModel(BaseModel):
     settlement_account: str = "checking"
 
 
+class SocialSecurityModel(BaseModel):
+    enabled: bool = False
+    start_date: date
+    monthly_benefit: float
+    annual_cola: float = 0.025
+    to_account: str = "checking"
+    taxable_pct: float = 0.85
+
+
 class ScenarioModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -550,6 +559,7 @@ class ScenarioModel(BaseModel):
     auto_transfers: List[AutoTransferModel] = Field(default_factory=list)
     inflation: InflationModel = Field(default_factory=InflationModel)
     taxes: Optional[TaxConfigModel] = None
+    social_security: Optional[SocialSecurityModel] = None
     paychecks: List[PaycheckModel] = Field(default_factory=list)
     rsu_grants: List[RSUGrantModel] = Field(default_factory=list)
     policies: List[PolicyModel] = Field(default_factory=list)
@@ -646,6 +656,7 @@ def load_scenario(path: str, overrides: Optional[List[str]] = None) -> ScenarioM
     merged_policies = []
     merged_events = []
     merged_goals = []
+    merged_social_security = None
 
     for inc in includes:
         if os.path.isabs(inc):
@@ -671,6 +682,8 @@ def load_scenario(path: str, overrides: Optional[List[str]] = None) -> ScenarioM
                 merged_events.extend(inc_data["events"])
             if "goals" in inc_data:
                 merged_goals.extend(inc_data["goals"])
+            if "social_security" in inc_data:
+                merged_social_security = inc_data["social_security"]
 
     if "accounts" in data:
         merged_accounts.update(data["accounts"])
@@ -686,6 +699,8 @@ def load_scenario(path: str, overrides: Optional[List[str]] = None) -> ScenarioM
         merged_events.extend(data["events"])
     if "goals" in data:
         merged_goals.extend(data["goals"])
+    if "social_security" in data:
+        merged_social_security = data["social_security"]
 
     filtered_flows = [flow for flow in merged_flows if flow["name"] not in excludes]
 
@@ -707,6 +722,8 @@ def load_scenario(path: str, overrides: Optional[List[str]] = None) -> ScenarioM
     data["policies"] = merged_policies
     data["events"] = merged_events
     data["goals"] = merged_goals
+    if merged_social_security is not None:
+        data["social_security"] = merged_social_security
 
     if overrides is not None:
         data = apply_cli_overrides(data, overrides)

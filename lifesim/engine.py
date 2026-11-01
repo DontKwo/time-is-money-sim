@@ -208,7 +208,30 @@ def run(scenario: ScenarioModel) -> Ledger:
                     accounts_manager.cost_bases,
                 )
 
-        # Step 4: Regular income flows & dividends
+        # Step 4: Regular income flows, dividends, & Social Security
+        if scenario.social_security and scenario.social_security.enabled:
+            social_sec_config = scenario.social_security
+            if current_date.day == 3 and current_date >= social_sec_config.start_date:
+                start_marker = (social_sec_config.start_date.month, social_sec_config.start_date.day)
+                prior_to_anniversary = 1 if (current_date.month, current_date.day) < start_marker else 0
+                years_elapsed = max(0, current_date.year - social_sec_config.start_date.year - prior_to_anniversary)
+                cola_factor = (1.0 + social_sec_config.annual_cola) ** years_elapsed
+                benefit_cents = int(round(social_sec_config.monthly_benefit * cola_factor * 100.0))
+                target_account = social_sec_config.to_account or default_account
+                if target_account in balances:
+                    accounts_manager.record_deposit(target_account, benefit_cents)
+                    ledger.append(
+                        current_date,
+                        "Social Security Benefit",
+                        benefit_cents,
+                        target_account,
+                        balances[target_account],
+                        category="income",
+                        tx_kind="income",
+                    )
+                    taxable_ss_cents = int(round(benefit_cents * social_sec_config.taxable_pct))
+                    payroll_state.ytd_taxable_ordinary_cents += taxable_ss_cents
+
         for flow in scenario.flows:
             if not flow.enabled or flow.type != "income":
                 continue
@@ -265,7 +288,7 @@ def run(scenario: ScenarioModel) -> Ledger:
         # Step 5: April 15 annual tax settlement
         if scenario.taxes and scenario.taxes.enabled and scenario.taxes.april_true_up:
             base_tax_day = date(current_date.year, 4, 15)
-            shifted_tax_day = shift_date(base_tax_day, weekend_rule="after", respect_us_holidays=True)
+            shifted_tax_day = shift_date(base_tax_day, weekend_rule="after", respect_holidays=True)
             if current_date == shifted_tax_day:
                 prior_year = current_date.year - 1
                 if prior_year in prior_year_tax_states:
