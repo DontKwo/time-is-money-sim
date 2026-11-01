@@ -1,12 +1,20 @@
 import os
 import numpy as np
-from lifesim.config import AmountModel, GasEstimate, GroceryEstimate
-from lifesim.amounts import get_amount
 import pytest
 from datetime import date
-from lifesim.config import ScheduleModel, load_scenario
-from lifesim.schedule import should_fire
+from lifesim.amounts import get_amount
+from lifesim.config import (
+    AmountModel,
+    GasEstimate,
+    GroceryEstimate,
+    ScheduleModel,
+    ScenarioModel,
+    apply_cli_overrides,
+    load_scenario,
+)
 from lifesim.engine import run
+from lifesim.rng import derive_rng
+from lifesim.schedule import should_fire
 
 def test_schedule_monthly():
     schedule = ScheduleModel(monthly=15)
@@ -25,47 +33,61 @@ def test_schedule_weekly():
     assert should_fire(schedule, date(2026, 1, 9), start_date) == True # Next Friday
 
 
+def test_schedule_date_bounds():
+    schedule = ScheduleModel(
+        weekly='fri',
+        start=date(2026, 1, 9),
+        end=date(2026, 1, 16),
+    )
+    start_date = date(2026, 1, 1)
+
+    assert should_fire(schedule, date(2026, 1, 2), start_date) == False
+    assert should_fire(schedule, date(2026, 1, 9), start_date) == True
+    assert should_fire(schedule, date(2026, 1, 16), start_date) == True
+    assert should_fire(schedule, date(2026, 1, 23), start_date) == False
+
+
 def test_amount_gas_estimate():
     amount = AmountModel(
         gas_estimate=GasEstimate(mpg=25.0, cost_per_gallon=3.5, miles_per_period=250.0)
     )
-    val = get_amount(amount)
-    assert val == 3500 # 250 / 25 * 3.5 = 35.00 -> 3500 cents
+    amount_cents = get_amount(amount)
+    assert amount_cents == 3500 # 250 / 25 * 3.5 = 35.00 -> 3500 cents
 
 def test_amount_gas_estimate_zero_or_negative_mpg():
     amount = AmountModel(
         gas_estimate=GasEstimate(mpg=0.0, cost_per_gallon=3.5, miles_per_period=250.0)
     )
-    val = get_amount(amount)
-    assert val == 0
+    amount_cents = get_amount(amount)
+    assert amount_cents == 0
 
     amount2 = AmountModel(
         gas_estimate=GasEstimate(mpg=-10.0, cost_per_gallon=3.5, miles_per_period=250.0)
     )
-    val2 = get_amount(amount2)
-    assert val2 == 0
+    amount_cents_2 = get_amount(amount2)
+    assert amount_cents_2 == 0
 
 def test_amount_grocery_estimate():
     amount = AmountModel(
         grocery_estimate=GroceryEstimate(people=3, cost_per_person_per_period=100.0)
     )
-    val = get_amount(amount)
-    assert val == 30000
+    amount_cents = get_amount(amount)
+    assert amount_cents == 30000
 
 def test_amount_distributions():
     rng = np.random.default_rng(42)
     amount = AmountModel(normal=[100.0, 10.0])
-    val = get_amount(amount, rng)
+    amount_cents = get_amount(amount, rng)
     # Using fixed seed 42
-    assert isinstance(val, int)
+    assert isinstance(amount_cents, int)
 
     amount_uniform = AmountModel(uniform=[50.0, 150.0])
-    val_uniform = get_amount(amount_uniform, rng)
-    assert isinstance(val_uniform, int)
+    amount_cents_uniform = get_amount(amount_uniform, rng)
+    assert isinstance(amount_cents_uniform, int)
 
     amount_lognormal = AmountModel(lognormal=[0.0, 1.0])
-    val_lognormal = get_amount(amount_lognormal, rng)
-    assert isinstance(val_lognormal, int)
+    amount_cents_lognormal = get_amount(amount_lognormal, rng)
+    assert isinstance(amount_cents_lognormal, int)
 
 def test_include_exclude_logic(tmp_path):
     # Create mock defaults
@@ -128,9 +150,8 @@ def test_engine_run():
     assert len(paycheck_tx) == 1
     assert paycheck_tx.iloc[0]['amount'] == 2000.0
 
-    # Start balance: 3000
-    # Jan 1: Rent -1800 -> 1200
-    # Jan 2: Paycheck +2000 -> 3200
+    # Start: 3000. Rent Jan 1: -1800 -> 1200.
+    # Paycheck Jan 2: +2000 -> 3200.
     assert paycheck_tx.iloc[0]['balance'] == 3200.0
 
 def test_overdraft_limit(tmp_path):
@@ -204,6 +225,59 @@ flows:
     finally:
         os.chdir(orig_dir)
 
+
+def test_auto_transfer_covers_expense_shortfall(tmp_path):
+    scenario_file = tmp_path / "scenario_auto_transfer.yaml"
+    scenario_file.write_text("""
+start: 2026-01-01
+days: 1
+accounts:
+  checking: {balance: 50}
+  investments: {balance: 100}
+auto_transfers:
+  - from: investments
+    to: checking
+    minimum_balance: 0
+flows:
+  - name: Expense
+    type: expense
+    from: checking
+    schedule: {once: "2026-01-01"}
+    amount: {fixed: 75}
+""")
+
+    scenario = load_scenario(str(scenario_file))
+    df = run(scenario).to_df()
+
+    transfers = df[df['flow'] == 'Automatic transfer: investments to checking']
+    expense = df[df['flow'] == 'Expense']
+    assert len(transfers) == 2
+    assert list(transfers['amount']) == [-25.0, 25.0]
+    assert expense.iloc[0]['balance'] == 0.0
+    assert df[df['account'] == 'investments'].iloc[-1]['balance'] == 75.0
+
+
+def test_account_growth_compounds_to_annual_rate(tmp_path):
+    scenario_file = tmp_path / "scenario_growth.yaml"
+    scenario_file.write_text("""
+start: 2026-01-01
+days: 365
+accounts:
+  investments:
+    balance: 100
+    annual_growth_rate: 0.06
+flows: []
+""")
+
+    scenario = load_scenario(str(scenario_file))
+    df = run(scenario).to_df()
+
+    growth = df[df['flow'] == 'investments Investment Growth']
+    assert len(growth) == 365
+    assert growth.iloc[0]['amount'] == 0.02
+    assert growth.iloc[-1]['balance'] == pytest.approx(106.0, abs=0.02)
+
+
 def test_schedule_yearly():
     schedule = ScheduleModel(yearly={'month': 2, 'day': 29})
     start_date = date(2023, 1, 1)
@@ -214,3 +288,154 @@ def test_schedule_yearly():
 
     # Non-leap year: 2025
     assert should_fire(schedule, date(2025, 2, 28), start_date) == True
+
+
+def test_scenario_end_date_resolution() -> None:
+    scenario = ScenarioModel(
+        start=date(2026, 1, 1),
+        end=date(2026, 1, 31),
+        accounts={},
+        flows=[],
+    )
+    assert scenario.days == 31
+    assert scenario.end == date(2026, 1, 31)
+
+
+def test_scenario_invalid_end_date_raises() -> None:
+    with pytest.raises(ValueError, match="on or after start date"):
+        ScenarioModel(
+            start=date(2026, 1, 10),
+            end=date(2026, 1, 5),
+            accounts={},
+            flows=[],
+        )
+
+
+def test_derive_rng_determinism() -> None:
+    rng_first = derive_rng(42, "account", "checking")
+    rng_second = derive_rng(42, "account", "checking")
+    rng_other = derive_rng(42, "account", "savings")
+    first_draw = float(rng_first.normal())
+    second_draw = float(rng_second.normal())
+    other_draw = float(rng_other.normal())
+    assert first_draw == second_draw
+    assert first_draw != other_draw
+
+
+def test_apply_cli_overrides() -> None:
+    raw_config = {
+        "start": "2026-01-01",
+        "days": 30,
+        "flows": [
+            {"name": "Rent", "amount": {"fixed": 2000.0}},
+            {"name": "Food", "amount": {"fixed": 500.0}},
+        ],
+        "paychecks": [
+            {"annual_salary": 100000.0},
+        ],
+    }
+    overrides = [
+        "flows.Rent.amount.fixed=2200.0",
+        "paychecks.0.annual_salary=125000.0",
+    ]
+    updated = apply_cli_overrides(raw_config, overrides)
+    assert updated["flows"][0]["amount"]["fixed"] == 2200.0
+    assert updated["paychecks"][0]["annual_salary"] == 125000.0
+
+
+def test_end_to_end_accounting_conservation() -> None:
+    # Test multi-account, 401k, credit card, and loan integration
+    scenario = ScenarioModel(
+        start=date(2026, 1, 1),
+        days=60,
+        seed=42,
+        accounts={
+            "checking": {
+                "kind": "checking",
+                "balance": 5000.0,
+            },
+            "traditional_401k": {
+                "kind": "traditional_401k",
+                "balance": 10000.0,
+                "annual_growth_rate": 0.06,
+            },
+            "credit_card": {
+                "kind": "credit_card",
+                "balance": 0.0,
+                "apr": 0.20,
+                "statement_day": 25,
+                "due_day": 20,
+                "cashback_pct": 0.02,
+                "autopay": {
+                    "enabled": True,
+                    "from_account": "checking",
+                    "mode": "statement_balance",
+                },
+            },
+            "auto_loan": {
+                "kind": "auto_loan",
+                "principal": 12000.0,
+                "apr": 0.06,
+                "term_months": 36,
+                "payment_day": 1,
+                "payment_from_account": "checking",
+            },
+        },
+        paychecks=[
+            {
+                "name": "Engineering Job",
+                "enabled": True,
+                "schedule": {"biweekly": "fri", "anchor": date(2026, 1, 2)},
+                "annual_salary": 130000.0,
+                "retirement_401k": {
+                    "enabled": True,
+                    "traditional_pct": 0.06,
+                    "employer_match": {
+                        "enabled": True,
+                        "match_rate": 1.0,
+                        "up_to_pct": 0.06,
+                        "to_account": "traditional_401k",
+                    },
+                },
+            }
+        ],
+        flows=[
+            {
+                "name": "Rent",
+                "type": "expense",
+                "from_account": "checking",
+                "schedule": {"monthly": 1},
+                "amount": {"fixed": 1800.0},
+            },
+            {
+                "name": "Groceries",
+                "type": "expense",
+                "from_account": "credit_card",
+                "schedule": {"weekly": "sat"},
+                "amount": {"fixed": 250.0},
+            },
+        ],
+        goals=[
+            {
+                "name": "Reach 10k Liquid",
+                "kind": "liquid_net_worth",
+                "target_amount": 10000.0,
+            }
+        ],
+    )
+
+    ledger = run(scenario)
+    daily_df = ledger.daily_df()
+    assert len(daily_df) == 60
+    assert "total_net_worth" in daily_df.columns
+    assert "liquid_net_worth" in daily_df.columns
+
+    start_record = daily_df.iloc[0]
+    final_record = daily_df.iloc[-1]
+    assert final_record["total_net_worth"] != start_record["total_net_worth"]
+
+    # Verify metrics and goal result structures are attached
+    assert "net_worth" in ledger.metrics
+    assert "liquidity" in ledger.metrics
+    assert len(ledger.goal_results) == 1
+    assert ledger.goal_results[0]["name"] == "Reach 10k Liquid"

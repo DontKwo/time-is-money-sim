@@ -1,0 +1,63 @@
+flows:
+  - name: "Haircut"
+    type: expense
+    from: checking
+    category: lifestyle
+    schedule:
+      every_n_days: 35
+      anchor: 2026-01-15
+    amount:
+      fixed: 45.0
+
+  - name: "Clothing"
+    type: expense
+    from: checking
+    category: lifestyle
+    schedule:
+      every_n_months:
+        n: 3
+        day: 20
+    amount:
+      uniform: [100.0, 250.0]
+
+  - name: "Hobbies and Entertainment"
+    type: expense
+    from: checking
+    category: lifestyle
+    schedule:
+      monthly: 10
+    amount:
+      normal: [75.0, 15.0]
+
+  - name: "Household Supplies"
+    type: expense
+    from: checking
+    category: lifestyle
+    schedule:
+      monthly: 1
+    amount:
+      fixed: 60.0
+
+  - name: "Holiday Gifts"
+    type: expense
+    from: checking
+    category: gifts
+    schedule:
+      yearly:
+        month: 12
+        day: 10
+    amount:
+      fixed: 600.0
+
+  - name: "Summer Vacation"
+    type: expense
+    from: checking
+    category: travel
+    schedule:
+      date_range:
+        start: 2026-07-10
+        end: 2026-07-17
+        spread_evenly: true
+    amount:
+      fixed: 2400.0
+

@@ -5,6 +5,7 @@ __pycache__/
 .pytest_cache/
 ledger.csv
 balances.png
+scenarios/seattle_2026_forecast.local.yaml
 dump.txt
 dump2.txt
 dump_md.py

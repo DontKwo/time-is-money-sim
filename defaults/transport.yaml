@@ -1,25 +1,63 @@
+accounts:
+  auto_loan:
+    kind: auto_loan
+    principal: 14000.0
+    apr: 0.059
+    term_months: 36
+    payment_day: 5
+    payment_from_account: checking
+
 flows:
-  - name: Car payment
+  - name: "Car Insurance"
     type: expense
     from: checking
+    category: transport
     schedule:
-      monthly: 10
+      every_n_months:
+        n: 6
+        day: 15
     amount:
-      fixed: 400
-  - name: Auto insurance
+      fixed: 650.0
+
+  - name: "Gasoline"
     type: expense
     from: checking
-    schedule:
-      monthly: 15
-    amount:
-      fixed: 140
-  - name: Gas / fuel
-    type: expense
-    from: checking
+    category: transport
     schedule:
       weekly: sun
     amount:
       gas_estimate:
-        mpg: 25.0
-        cost_per_gallon: 3.50
-        miles_per_period: 300.0
+        mpg: 28.0
+        cost_per_gallon: 3.65
+        miles_per_period: 250.0
+
+  - name: "Vehicle Registration"
+    type: expense
+    from: checking
+    category: transport
+    schedule:
+      yearly:
+        month: 5
+        day: 20
+    amount:
+      fixed: 240.0
+
+  - name: "Oil and Maintenance"
+    type: expense
+    from: checking
+    category: transport
+    schedule:
+      every_n_months:
+        n: 6
+        day: 1
+    amount:
+      normal: [120.0, 20.0]
+
+  - name: "Rideshare"
+    type: expense
+    from: checking
+    category: transport
+    schedule:
+      random_per_month: 3.0
+    amount:
+      uniform: [18.0, 45.0]
