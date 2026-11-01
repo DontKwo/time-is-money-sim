@@ -292,3 +292,52 @@ accounts:
     assert exit_info.value.code == 1
     captured = capsys.readouterr()
     assert "Validation error:" in captured.out
+
+def test_cli_html_report_export(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    scenario_file = tmp_path / "scenario_html.yaml"
+    scenario_file.write_text("""
+start: 2026-01-01
+days: 30
+accounts:
+  checking: {balance: 5000}
+flows:
+  - name: Salary
+    type: income
+    to: checking
+    schedule: {weekly: fri}
+    amount: {fixed: 1000}
+  - name: Rent
+    category: housing
+    type: expense
+    from: checking
+    schedule: {monthly: 1}
+    amount: {fixed: 1200}
+goals:
+  - name: Emergency Fund
+    kind: net_worth
+    target_amount: 6000
+""")
+
+    out_html = tmp_path / "report.html"
+    test_args = [
+        "lifesim",
+        str(scenario_file),
+        "--out-html", str(out_html),
+    ]
+    with patch.object(sys, "argv", test_args):
+        main()
+
+    captured = capsys.readouterr()
+    assert f"Generating HTML report to {out_html}..." in captured.out
+
+    assert out_html.exists()
+
+    html_content = out_html.read_text(encoding="utf-8")
+    assert "<!DOCTYPE html>" in html_content
+    assert "Life Money Simulator - Financial Report" in html_content
+    assert "Executive Summary" in html_content
+    assert "Net Worth Chart" in html_content
+    assert "<svg" in html_content
+    assert "Monthly Cashflow" in html_content
+    assert "Expense Categories" in html_content
+    assert "Goal Milestones" in html_content
