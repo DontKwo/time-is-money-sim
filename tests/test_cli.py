@@ -1,6 +1,8 @@
 import json
 import os
+import sqlite3
 import sys
+from typing import List, Tuple
 from unittest.mock import patch
 from pathlib import Path
 import pytest
@@ -123,3 +125,170 @@ flows:
     assert mc_plot.exists()
     assert compare_plot.exists()
     assert tornado_plot.exists()
+
+def test_cli_sqlite_export(tmp_path: Path) -> None:
+    scenario_file = tmp_path / "scenario_sqlite.yaml"
+    scenario_file.write_text("""
+start: 2026-01-01
+days: 10
+accounts:
+  checking: {balance: 2000}
+  savings: {balance: 5000}
+flows:
+  - name: Salary
+    type: income
+    to: checking
+    schedule: {weekly: fri}
+    amount: {fixed: 500}
+  - name: Rent
+    type: expense
+    from: checking
+    schedule: {monthly: 1}
+    amount: {fixed: 800}
+""")
+
+    out_sqlite = tmp_path / "export.sqlite"
+    test_args = [
+        "lifesim",
+        str(scenario_file),
+        "--out-sqlite", str(out_sqlite),
+    ]
+    with patch.object(sys, "argv", test_args):
+        main()
+
+    assert out_sqlite.exists()
+
+    db_connection = sqlite3.connect(str(out_sqlite))
+    db_cursor = db_connection.cursor()
+
+    # Verify transactions table schema and rows
+    db_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='transactions'")
+    table_result = db_cursor.fetchone()
+    assert table_result is not None
+
+    db_cursor.execute("PRAGMA table_info(transactions)")
+    tx_columns: List[str] = [column_info[1] for column_info in db_cursor.fetchall()]
+    expected_tx_cols = ["date", "flow", "amount", "account", "balance", "category", "tx_kind"]
+    assert tx_columns == expected_tx_cols
+
+    db_cursor.execute("SELECT COUNT(*) FROM transactions")
+    tx_count_row = db_cursor.fetchone()
+    assert tx_count_row is not None
+    assert tx_count_row[0] > 0
+
+    # Verify queryability and index presence
+    db_cursor.execute("PRAGMA index_list(transactions)")
+    tx_indexes: List[str] = [index_info[1] for index_info in db_cursor.fetchall()]
+    assert "idx_transactions_date" in tx_indexes
+    assert "idx_transactions_account" in tx_indexes
+
+    db_cursor.execute("SELECT date, flow, amount FROM transactions WHERE account='checking'")
+    query_rows: List[Tuple] = db_cursor.fetchall()
+    assert len(query_rows) == tx_count_row[0]
+
+    # Verify daily_balances table schema and rows
+    db_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='daily_balances'")
+    daily_table_result = db_cursor.fetchone()
+    assert daily_table_result is not None
+
+    db_cursor.execute("PRAGMA table_info(daily_balances)")
+    daily_columns: List[str] = [column_info[1] for column_info in db_cursor.fetchall()]
+    base_daily_cols = [
+        "date",
+        "total_net_worth",
+        "liquid_net_worth",
+        "vested_net_worth",
+        "total_assets",
+        "total_debt",
+    ]
+    for base_col in base_daily_cols:
+        assert base_col in daily_columns
+    assert "checking" in daily_columns
+    assert "savings" in daily_columns
+
+    db_cursor.execute("SELECT COUNT(*) FROM daily_balances")
+    daily_count_row = db_cursor.fetchone()
+    assert daily_count_row is not None
+    assert daily_count_row[0] == 10
+
+    db_cursor.execute("PRAGMA index_list(daily_balances)")
+    daily_indexes: List[str] = [index_info[1] for index_info in db_cursor.fetchall()]
+    assert "idx_daily_balances_date" in daily_indexes
+
+    db_cursor.execute("SELECT date, total_net_worth, checking, savings FROM daily_balances")
+    daily_query_rows: List[Tuple] = db_cursor.fetchall()
+    assert len(daily_query_rows) == 10
+
+    db_connection.close()
+
+
+def test_cli_validate_success(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    scenario_file = tmp_path / "scenario_valid.yaml"
+    scenario_file.write_text("""
+start: 2026-01-01
+days: 30
+accounts:
+  checking: {balance: 2500}
+flows:
+  - name: Rent
+    type: expense
+    from: checking
+    schedule: {monthly: 1}
+    amount: {fixed: 1200}
+""")
+
+    test_args = ["lifesim", str(scenario_file), "--validate"]
+    with patch.object(sys, "argv", test_args):
+        with pytest.raises(SystemExit) as exit_info:
+            main()
+
+    assert exit_info.value.code == 0
+    captured = capsys.readouterr()
+    assert f"Validation successful: {scenario_file} is valid." in captured.out
+
+
+def test_cli_validate_scenario_not_found(capsys: pytest.CaptureFixture) -> None:
+    non_existent_file = "missing_scenario.yaml"
+    test_args = ["lifesim", non_existent_file, "--validate"]
+    with patch.object(sys, "argv", test_args):
+        with pytest.raises(SystemExit) as exit_info:
+            main()
+
+    assert exit_info.value.code == 1
+    captured = capsys.readouterr()
+    assert f"Error: Scenario file {non_existent_file} not found." in captured.out
+
+
+def test_cli_validate_invalid_yaml(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    invalid_yaml_file = tmp_path / "broken_syntax.yaml"
+    invalid_yaml_file.write_text("start: 2026-01-01\naccounts: [unclosed list\n")
+
+    test_args = ["lifesim", str(invalid_yaml_file), "--validate"]
+    with patch.object(sys, "argv", test_args):
+        with pytest.raises(SystemExit) as exit_info:
+            main()
+
+    assert exit_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "Validation error:" in captured.out
+
+
+def test_cli_validate_broken_account(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    broken_scenario_file = tmp_path / "broken_account.yaml"
+    broken_scenario_file.write_text("""
+start: 2026-01-01
+days: 30
+accounts:
+  checking:
+    kind: non_existent_account_kind
+    balance: 1000
+""")
+
+    test_args = ["lifesim", str(broken_scenario_file), "--validate"]
+    with patch.object(sys, "argv", test_args):
+        with pytest.raises(SystemExit) as exit_info:
+            main()
+
+    assert exit_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "Validation error:" in captured.out

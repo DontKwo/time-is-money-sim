@@ -107,6 +107,8 @@ def run(scenario: ScenarioModel) -> Ledger:
             tax_state.ytd_taxable_interest_cents = accounts_manager.ytd_taxable_interest_cents
             tax_state.ytd_qualified_dividends_cents = accounts_manager.ytd_qualified_dividends_cents
             tax_state.ytd_realized_cap_gains_cents = accounts_manager.ytd_realized_cap_gains_cents
+            tax_state.ytd_mortgage_interest_cents = accounts_manager.ytd_mortgage_interest_cents
+            tax_state.ytd_property_tax_cents = accounts_manager.ytd_property_tax_cents
             tax_state.ytd_fed_withheld_cents = payroll_state.ytd_fed_withheld_cents
             tax_state.ytd_state_withheld_cents = payroll_state.ytd_state_withheld_cents
             tax_state.ytd_fica_withheld_cents = payroll_state.ytd_fica_withheld_cents
@@ -118,6 +120,8 @@ def run(scenario: ScenarioModel) -> Ledger:
             accounts_manager.ytd_taxable_interest_cents = 0
             accounts_manager.ytd_qualified_dividends_cents = 0
             accounts_manager.ytd_realized_cap_gains_cents = 0
+            accounts_manager.ytd_mortgage_interest_cents = 0
+            accounts_manager.ytd_property_tax_cents = 0
             annual_contributions_ytd.clear()
 
         macro_state.advance_day(current_date)

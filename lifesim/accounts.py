@@ -42,6 +42,8 @@ class AccountManager:
         self.total_overdraft_fees_cents: int = 0
         self.total_late_fees_cents: int = 0
         self.total_interest_paid_cents: int = 0
+        self.ytd_mortgage_interest_cents: int = 0
+        self.ytd_property_tax_cents: int = 0
         self.ytd_taxable_interest_cents: int = 0
         self.ytd_qualified_dividends_cents: int = 0
         self.ytd_realized_cap_gains_cents: int = 0
@@ -264,6 +266,8 @@ class AccountManager:
         if interest_cents > 0:
             self.balances[loan_name] -= interest_cents
             self.total_interest_paid_cents += interest_cents
+            if config.kind == "mortgage":
+                self.ytd_mortgage_interest_cents += interest_cents
             ledger.append(current_date, f"{loan_name} Interest", -interest_cents, loan_name, self.balances[loan_name])
 
         # 2. Transfer P&I
@@ -285,8 +289,10 @@ class AccountManager:
             tax_portion = current_asset * config.property_tax_annual_pct
             insurance_portion = config.home_insurance_annual * 100.0
             escrow_cents = int(round((tax_portion + insurance_portion) / 12.0))
+            property_tax_cents = int(round(tax_portion / 12.0))
             if escrow_cents > 0:
                 self.balances[funding_account] = self.balances.get(funding_account, 0) - escrow_cents
+                self.ytd_property_tax_cents += property_tax_cents
                 ledger.append(current_date, f"{loan_name} Escrow Tax and Insurance", -escrow_cents, funding_account, self.balances[funding_account])
 
             current_ltv = (-self.balances[loan_name]) / max(1, current_asset)
