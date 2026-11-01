@@ -380,3 +380,51 @@ flows:
     daily_df = pd.read_csv(out_daily)
     assert not daily_df.empty
     assert "total_net_worth" in daily_df.columns
+
+def test_cli_batch(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    scenario_1 = tmp_path / "scenario_1.yaml"
+    scenario_1.write_text("""
+start: 2026-01-01
+days: 30
+accounts:
+  checking: {balance: 2500}
+""")
+
+    scenario_2 = tmp_path / "scenario_2.yaml"
+    scenario_2.write_text("""
+start: 2026-01-01
+days: 30
+accounts:
+  checking: {balance: 5000}
+""")
+
+    out_csv = tmp_path / "batch_out.csv"
+
+    test_args = [
+        "lifesim",
+        "--batch", str(tmp_path),
+        "--out-batch-csv", str(out_csv)
+    ]
+    with patch.object(sys, "argv", test_args):
+        with pytest.raises(SystemExit) as exit_info:
+            main()
+
+    assert exit_info.value.code == 0
+    captured = capsys.readouterr()
+    assert "Running batch on 2 scenarios..." in captured.out
+    assert "scenario_1.yaml" in captured.out
+    assert "scenario_2.yaml" in captured.out
+    assert "2500.00" in captured.out
+    assert "5000.00" in captured.out
+
+    assert out_csv.exists()
+    import pandas as pd
+    df = pd.read_csv(out_csv)
+    assert len(df) == 2
+    assert "Scenario" in df.columns
+    assert "Total Net Worth" in df.columns
+    assert "Liquid Net Worth" in df.columns
+    assert "Savings Rate" in df.columns
+    assert "Cash Runway Days" in df.columns
+    assert "Lowest Checking Balance" in df.columns
+    assert "Goals Achieved Count" in df.columns

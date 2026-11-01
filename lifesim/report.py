@@ -62,7 +62,9 @@ def generate_html_report(scenario: ScenarioModel, ledger: Ledger, filename: str)
 
             if not recent_expenses.empty:
                 total_recent_spending = abs(float(recent_expenses["amount"].sum()))
-                days_in_period = (last_date - cutoff_date).days
+                first_date = pd.to_datetime(tx_df["date"].iloc[0])
+                actual_cutoff = max(cutoff_date, first_date)
+                days_in_period = (last_date - actual_cutoff).days
                 if days_in_period > 0:
                     daily_expense = total_recent_spending / days_in_period
                     ending_liquid = nw_metrics.get("ending_liquid", 0)

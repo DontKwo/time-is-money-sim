@@ -22,11 +22,15 @@ from lifesim.montecarlo import run_monte_carlo
 from lifesim.compare import compare_scenarios, run_sensitivity_analysis
 from lifesim.db import export_to_sqlite
 from lifesim.report import generate_html_report
+from lifesim.batch import run_batch
+import glob
+import os
+from tabulate import tabulate
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Life Money Simulator")
-    parser.add_argument("scenario", type=str, help="Path to scenario YAML file")
+    parser.add_argument("scenario", type=str, nargs="?", default=None, help="Path to scenario YAML file")
     parser.add_argument("--out-ledger", type=str, default="ledger.csv", help="Output ledger CSV path")
     parser.add_argument("--out-plot", type=str, default="balances.png", help="Output plot PNG path")
     parser.add_argument(
@@ -55,8 +59,38 @@ def main() -> None:
     parser.add_argument("--out-sqlite", type=str, default=None, help="Output SQLite database path")
     parser.add_argument("--out-html", type=str, default=None, help="Output interactive HTML report path")
     parser.add_argument("--real-dollars", action="store_true", help="Deflate output metrics and charts into constant purchasing power dollars")
+    parser.add_argument("--batch", type=str, default=None, help="Glob pattern or directory for batch running scenarios")
+    parser.add_argument("--out-batch-csv", type=str, default=None, help="Output CSV path for batch summary matrix")
+
 
     args = parser.parse_args()
+
+    if args.batch is not None:
+        batch_path = Path(args.batch)
+        scenario_files: List[str] = []
+        if batch_path.is_dir():
+            scenario_files = [str(path_item) for path_item in batch_path.glob("*.yaml")] + [str(path_item) for path_item in batch_path.glob("*.yml")]
+        else:
+            scenario_files = glob.glob(args.batch)
+
+        if not scenario_files:
+            print(f"Error: No scenario files found for batch {args.batch}")
+            sys.exit(1)
+
+        print(f"Running batch on {len(scenario_files)} scenarios...")
+        summary_df = run_batch(scenario_files)
+
+        # Print ASCII table
+        print(tabulate(summary_df, headers="keys", tablefmt="grid", floatfmt=".2f"))
+
+        if args.out_batch_csv is not None:
+            print(f"Exporting batch summary to {args.out_batch_csv}...")
+            summary_df.to_csv(args.out_batch_csv)
+
+        sys.exit(0)
+
+    if args.scenario is None:
+        parser.error("scenario is required unless --batch is provided")
 
     # Handle scenario validation mode
     if args.validate:
