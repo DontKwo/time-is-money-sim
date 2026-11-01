@@ -351,7 +351,8 @@ def apply_retirement_drawdown(
     remaining_needed = needed_cents
     gross_up_factor = 1.0 - policy.pretax_gross_up_rate
 
-    for source_acc in policy.withdrawal_order:
+    order = policy.withdrawal_order or ["savings", "investment", "traditional_401k", "traditional_ira", "roth_401k", "roth_ira", "hsa"]
+    for source_acc in order:
         available_cents = max(0, balances.get(source_acc, 0))
         if available_cents <= 0:
             continue

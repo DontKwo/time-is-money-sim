@@ -126,7 +126,6 @@ flows:
     assert compare_plot.exists()
     assert tornado_plot.exists()
 
-
 def test_cli_sqlite_export(tmp_path: Path) -> None:
     scenario_file = tmp_path / "scenario_sqlite.yaml"
     scenario_file.write_text("""
@@ -221,3 +220,75 @@ flows:
     assert len(daily_query_rows) == 10
 
     db_connection.close()
+
+
+def test_cli_validate_success(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    scenario_file = tmp_path / "scenario_valid.yaml"
+    scenario_file.write_text("""
+start: 2026-01-01
+days: 30
+accounts:
+  checking: {balance: 2500}
+flows:
+  - name: Rent
+    type: expense
+    from: checking
+    schedule: {monthly: 1}
+    amount: {fixed: 1200}
+""")
+
+    test_args = ["lifesim", str(scenario_file), "--validate"]
+    with patch.object(sys, "argv", test_args):
+        with pytest.raises(SystemExit) as exit_info:
+            main()
+
+    assert exit_info.value.code == 0
+    captured = capsys.readouterr()
+    assert f"Validation successful: {scenario_file} is valid." in captured.out
+
+
+def test_cli_validate_scenario_not_found(capsys: pytest.CaptureFixture) -> None:
+    non_existent_file = "missing_scenario.yaml"
+    test_args = ["lifesim", non_existent_file, "--validate"]
+    with patch.object(sys, "argv", test_args):
+        with pytest.raises(SystemExit) as exit_info:
+            main()
+
+    assert exit_info.value.code == 1
+    captured = capsys.readouterr()
+    assert f"Error: Scenario file {non_existent_file} not found." in captured.out
+
+
+def test_cli_validate_invalid_yaml(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    invalid_yaml_file = tmp_path / "broken_syntax.yaml"
+    invalid_yaml_file.write_text("start: 2026-01-01\naccounts: [unclosed list\n")
+
+    test_args = ["lifesim", str(invalid_yaml_file), "--validate"]
+    with patch.object(sys, "argv", test_args):
+        with pytest.raises(SystemExit) as exit_info:
+            main()
+
+    assert exit_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "Validation error:" in captured.out
+
+
+def test_cli_validate_broken_account(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    broken_scenario_file = tmp_path / "broken_account.yaml"
+    broken_scenario_file.write_text("""
+start: 2026-01-01
+days: 30
+accounts:
+  checking:
+    kind: non_existent_account_kind
+    balance: 1000
+""")
+
+    test_args = ["lifesim", str(broken_scenario_file), "--validate"]
+    with patch.object(sys, "argv", test_args):
+        with pytest.raises(SystemExit) as exit_info:
+            main()
+
+    assert exit_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "Validation error:" in captured.out
