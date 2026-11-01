@@ -51,6 +51,7 @@ def main() -> None:
     parser.add_argument("--out-tornado-plot", type=str, default="sensitivity.png", help="Tornado plot path")
     parser.add_argument("--validate", action="store_true", help="Validate scenario file without running simulation")
     parser.add_argument("--out-sqlite", type=str, default=None, help="Output SQLite database path")
+    parser.add_argument("--out-jsonl", type=str, default=None, help="Output JSON-Lines ledger path")
 
     args = parser.parse_args()
 
@@ -95,6 +96,9 @@ def main() -> None:
 
     if args.out_sqlite is not None:
         export_to_sqlite(ledger, args.out_sqlite)
+
+    if args.out_jsonl is not None:
+        ledger.export_jsonl(args.out_jsonl)
 
     if args.out_summary is not None:
         summary_payload = {

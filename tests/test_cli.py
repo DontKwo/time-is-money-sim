@@ -222,6 +222,57 @@ flows:
     db_connection.close()
 
 
+def test_cli_jsonl_export(tmp_path: Path) -> None:
+    scenario_file = tmp_path / "scenario_jsonl.yaml"
+    scenario_file.write_text("""
+start: 2026-01-01
+days: 10
+accounts:
+  checking: {balance: 2000}
+flows:
+  - name: Paycheck
+    type: income
+    to: checking
+    schedule: {weekly: fri}
+    amount: {fixed: 500}
+  - name: Grocery
+    type: expense
+    from: checking
+    schedule: {weekly: sat}
+    amount: {fixed: 50}
+""")
+
+    out_jsonl = tmp_path / "export.jsonl"
+    test_args = [
+        "lifesim",
+        str(scenario_file),
+        "--out-jsonl", str(out_jsonl),
+    ]
+    with patch.object(sys, "argv", test_args):
+        main()
+
+    assert out_jsonl.exists()
+
+    raw_lines = [line.strip() for line in out_jsonl.read_text(encoding="utf-8").strip().split("\n") if line.strip()]
+    parsed_records: List[dict] = []
+    for line in raw_lines:
+        record_obj = json.loads(line)
+        parsed_records.append(record_obj)
+
+    assert len(parsed_records) > 0
+    assert len(raw_lines) == len(parsed_records)
+
+    required_keys = {"date", "flow", "amount", "account", "balance", "category", "tx_kind"}
+    for record_entry in parsed_records:
+        assert required_keys.issubset(record_entry.keys())
+        assert isinstance(record_entry["date"], str)
+        assert len(record_entry["date"].split("-")) == 3
+        assert isinstance(record_entry["amount"], (float, int))
+        assert isinstance(record_entry["balance"], (float, int))
+        assert isinstance(record_entry["flow"], str)
+        assert isinstance(record_entry["account"], str)
+
+
 def test_cli_validate_success(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
     scenario_file = tmp_path / "scenario_valid.yaml"
     scenario_file.write_text("""
