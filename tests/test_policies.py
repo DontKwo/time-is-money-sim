@@ -1,8 +1,9 @@
 from datetime import date, timedelta
 from lifesim.config import PolicyModel, AccountModel
-from lifesim.policies import apply_payday_skim, apply_debt_payoff
+from lifesim.policies import apply_payday_skim, apply_debt_payoff, apply_roth_conversion_ladder
 from lifesim.accounts import AccountManager
 from lifesim.ledger import Ledger
+from lifesim.payroll import PayrollState
 
 
 def test_ira_cap_overflow_to_brokerage() -> None:
@@ -96,3 +97,71 @@ def test_avalanche_vs_snowball_debt_payoff() -> None:
 
     # Avalanche targets the 22% APR card first, so total interest paid must be strictly less
     assert interest_avalanche < interest_snowball
+
+
+def test_roth_conversion_ladder() -> None:
+    policy = PolicyModel(
+        name="Roth Conversion",
+        kind="roth_conversion_ladder",
+        from_account="traditional_401k",
+        to_account="roth_ira",
+        conversion_amount=12000.0,
+        seasoning_years=5,
+    )
+
+    accounts = {
+        "traditional_401k": AccountModel(kind="traditional_401k", balance=50000.0),
+        "roth_ira": AccountModel(kind="roth_ira", balance=0.0),
+    }
+
+    manager = AccountManager(accounts, base_seed=42)
+    manager.balances = {"traditional_401k": 5000000, "roth_ira": 0}
+
+    ledger = Ledger()
+    payroll_state = PayrollState(2026)
+
+    current_date = date(2026, 12, 1)
+
+    apply_roth_conversion_ladder(
+        policy,
+        manager.balances,
+        ledger,
+        current_date,
+        payroll_state,
+        manager
+    )
+
+    # Verify balance transfer (12k dollars = 1.2M cents)
+    assert manager.balances["traditional_401k"] == 3800000
+    assert manager.balances["roth_ira"] == 1200000
+
+    # Verify taxable event
+    assert payroll_state.ytd_taxable_ordinary_cents == 1200000
+
+    # Verify seasoned buckets tracking
+    assert len(manager.roth_conversion_seasoning) == 1
+    assert manager.roth_conversion_seasoning[0] == (current_date, 1200000)
+
+    # Test conversion limits (available < conversion_amount)
+    manager.balances["traditional_401k"] = 500000 # Only 5k left
+    manager.balances["roth_ira"] = 1200000
+
+    current_date_2 = date(2027, 12, 1)
+
+    apply_roth_conversion_ladder(
+        policy,
+        manager.balances,
+        ledger,
+        current_date_2,
+        payroll_state,
+        manager
+    )
+
+    # Should only transfer available 5k
+    assert manager.balances["traditional_401k"] == 0
+    assert manager.balances["roth_ira"] == 1700000
+    assert payroll_state.ytd_taxable_ordinary_cents == 1700000
+
+    # Seasoning bucket should only record the 5k transfer
+    assert len(manager.roth_conversion_seasoning) == 2
+    assert manager.roth_conversion_seasoning[1] == (current_date_2, 500000)

@@ -1,7 +1,7 @@
 import calendar
 import math
 from datetime import date, timedelta
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 import numpy as np
 from .config import AccountModel, FlowModel
 from .schedule import resolve_day_of_month
@@ -21,6 +21,7 @@ class AccountManager:
         self.monthly_unposted_interest: Dict[str, float] = {name: 0.0 for name in accounts}
         self.account_rngs: Dict[str, np.random.Generator] = {}
         self.overdraft_fee_count_today: Dict[str, int] = {name: 0 for name in accounts}
+        self.roth_conversion_seasoning: List[Tuple[date, int]] = []
 
         # Credit card state
         self.in_grace_period: Dict[str, bool] = {}

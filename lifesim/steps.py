@@ -27,6 +27,7 @@ from .policies import (
     apply_emergency_fund_target,
     apply_portfolio_rebalance,
     apply_retirement_drawdown,
+    apply_roth_conversion_ladder,
     apply_sinking_fund,
 )
 from .events import EventManager
@@ -728,6 +729,15 @@ def step_10_policies(
                 ledger,
                 current_date,
                 payroll_state,
+            )
+        elif policy.kind == "roth_conversion_ladder":
+            apply_roth_conversion_ladder(
+                policy,
+                balances,
+                ledger,
+                current_date,
+                payroll_state,
+                accounts_manager,
             )
         elif policy.kind == "sinking_fund":
             apply_sinking_fund(
