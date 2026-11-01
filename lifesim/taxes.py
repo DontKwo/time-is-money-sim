@@ -131,10 +131,7 @@ def compute_april_settlement_cents(
 
     allowable_salt_cents = min(salt_cap_cents, tax_state.ytd_property_tax_cents)
     itemized_deductions_cents = tax_state.ytd_mortgage_interest_cents + allowable_salt_cents
-    deductions_cents = (
-        max(standard_deduction_cents, itemized_deductions_cents)
-        + tax_state.ytd_traditional_ira_deductible_cents
-    )
+    deductions_cents = max(standard_deduction_cents, itemized_deductions_cents) + tax_state.ytd_traditional_ira_deductible_cents
 
     ordinary_gross_cents = tax_state.ytd_taxable_ordinary_cents + tax_state.ytd_taxable_interest_cents
     taxable_ordinary_cents = max(0, ordinary_gross_cents - deductions_cents)
