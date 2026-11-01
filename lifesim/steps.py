@@ -60,6 +60,16 @@ def step_1_macro_rollover(
         tax_state.ytd_fed_withheld_cents = payroll_state.ytd_fed_withheld_cents
         tax_state.ytd_state_withheld_cents = payroll_state.ytd_state_withheld_cents
         tax_state.ytd_fica_withheld_cents = payroll_state.ytd_fica_withheld_cents
+        tax_state.ytd_529_non_qualified_earnings_cents = accounts_manager.ytd_529_non_qualified_earnings_cents
+
+        ytd_state_529_deductible = 0
+        for acc_name, contrib in accounts_manager.ytd_529_contributions_cents.items():
+            config = accounts_manager.configs.get(acc_name)
+            if config and config.kind == "college_529" and config.state_tax_deduction_limit is not None:
+                limit_cents = int(round(config.state_tax_deduction_limit * 100.0))
+                ytd_state_529_deductible += min(contrib, limit_cents)
+        tax_state.ytd_state_529_deductible_cents = ytd_state_529_deductible
+
         prior_year_tax_states[current_tax_year] = tax_state
 
         current_tax_year = current_date.year
@@ -70,6 +80,8 @@ def step_1_macro_rollover(
         accounts_manager.ytd_realized_cap_gains_cents = 0
         accounts_manager.ytd_mortgage_interest_cents = 0
         accounts_manager.ytd_property_tax_cents = 0
+        accounts_manager.ytd_529_contributions_cents.clear()
+        accounts_manager.ytd_529_non_qualified_earnings_cents = 0
         annual_contributions_ytd.clear()
 
     macro_state.advance_day(current_date)
@@ -558,7 +570,7 @@ def step_8_transfers(
             if allowed_cents <= 0:
                 continue
 
-            accounts_manager.record_withdrawal(source_account, allowed_cents)
+            accounts_manager.record_withdrawal(source_account, allowed_cents, category=flow.category or "", tags=flow.tags)
             accounts_manager.record_deposit(destination_account, allowed_cents)
             annual_contributions_ytd[destination_account] = annual_contributions_ytd.get(destination_account, 0) + allowed_cents
             ledger.append(

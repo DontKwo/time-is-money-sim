@@ -17,6 +17,8 @@ class YearTaxAccumulator:
         self.ytd_fed_withheld_cents: int = 0
         self.ytd_state_withheld_cents: int = 0
         self.ytd_fica_withheld_cents: int = 0
+        self.ytd_529_non_qualified_earnings_cents: int = 0
+        self.ytd_state_529_deductible_cents: int = 0
 
 
 def compute_fica_cents(
@@ -133,15 +135,18 @@ def compute_april_settlement_cents(
     itemized_deductions_cents = tax_state.ytd_mortgage_interest_cents + allowable_salt_cents
     deductions_cents = max(standard_deduction_cents, itemized_deductions_cents) + tax_state.ytd_traditional_ira_deductible_cents
 
-    ordinary_gross_cents = tax_state.ytd_taxable_ordinary_cents + tax_state.ytd_taxable_interest_cents
+    ordinary_gross_cents = tax_state.ytd_taxable_ordinary_cents + tax_state.ytd_taxable_interest_cents + tax_state.ytd_529_non_qualified_earnings_cents
     taxable_ordinary_cents = max(0, ordinary_gross_cents - deductions_cents)
 
     fed_ordinary_tax_cents = compute_progressive_tax_cents(taxable_ordinary_cents, config.federal_brackets)
     total_ltcg_cents = tax_state.ytd_realized_cap_gains_cents + tax_state.ytd_qualified_dividends_cents
     fed_ltcg_tax_cents = compute_ltcg_tax_cents(taxable_ordinary_cents, total_ltcg_cents, config.ltcg_brackets)
-    total_fed_tax_cents = fed_ordinary_tax_cents + fed_ltcg_tax_cents
+
+    penalty_529_cents = int(round(tax_state.ytd_529_non_qualified_earnings_cents * 0.10))
+    total_fed_tax_cents = fed_ordinary_tax_cents + fed_ltcg_tax_cents + penalty_529_cents
 
     combined_state_taxable = taxable_ordinary_cents + total_ltcg_cents
+    combined_state_taxable = max(0, combined_state_taxable - tax_state.ytd_state_529_deductible_cents)
     if config.state_brackets:
         total_state_tax_cents = compute_progressive_tax_cents(combined_state_taxable, config.state_brackets)
     else:

@@ -141,3 +141,91 @@ def test_mortgage_pmi_auto_drop() -> None:
     assert len(pmi_records) > 0
     # Current debt is now below 78% of asset value
     assert (-manager.balances["house_loan"]) / manager.asset_values_cents["house_loan"] <= 0.78
+
+def test_529_college_savings_plan() -> None:
+    accounts = {
+        "checking": AccountModel(kind="checking", balance=10_000.0),
+        "college_fund": AccountModel(
+            kind="college_529",
+            balance=10_000.0,
+            initial_cost_basis=8_000.0,
+            annual_growth_rate=0.05,
+            state_tax_deduction_limit=4_000.0
+        )
+    }
+    manager = AccountManager(accounts, base_seed=42)
+    ledger = Ledger()
+
+    # Check deposit adds to contributions
+    manager.record_deposit("college_fund", 500_000) # $5,000 contribution
+    assert manager.ytd_529_contributions_cents["college_fund"] == 500_000
+    assert manager.cost_bases["college_fund"] == 1_300_000 # 8,000 + 5,000
+
+    # Check tax-free investment growth
+    sim_start = date(2026, 1, 1)
+    for day_index in range(365):
+        current_date = sim_start + timedelta(days=day_index)
+        manager.process_investment_returns_and_savings(current_date, ledger)
+
+    # Growth occurred
+    assert manager.balances["college_fund"] > 1_500_000
+    # No tax consequences recorded during growth
+    assert manager.ytd_taxable_interest_cents == 0
+    assert manager.ytd_realized_cap_gains_cents == 0
+    assert manager.ytd_qualified_dividends_cents == 0
+
+    # Check qualified withdrawal
+    pre_withdrawal_balance = manager.balances["college_fund"]
+    manager.record_withdrawal("college_fund", pre_withdrawal_balance, category="education")
+    assert manager.ytd_realized_cap_gains_cents == 0
+    assert manager.ytd_529_non_qualified_earnings_cents == 0
+    assert manager.balances["college_fund"] == 0
+
+    # Reset and test non-qualified
+    manager.balances["college_fund"] = 10_000_00
+    manager.cost_bases["college_fund"] = 8_000_00
+
+    manager.record_withdrawal("college_fund", 10_000_00)
+    assert manager.ytd_529_non_qualified_earnings_cents == 2_000_00
+    assert manager.ytd_realized_cap_gains_cents == 0
+
+
+def test_529_state_tax_deduction_limit() -> None:
+    from lifesim.steps import step_1_macro_rollover
+    from lifesim.macro import MacroState
+    from lifesim.payroll import PayrollState
+    from lifesim.taxes import YearTaxAccumulator
+
+    accounts = {
+        "college_fund": AccountModel(
+            kind="college_529",
+            balance=0.0,
+            state_tax_deduction_limit=4_000.0
+        )
+    }
+    manager = AccountManager(accounts, base_seed=42)
+    manager.record_deposit("college_fund", 500_000) # Contribute $5,000
+
+    from lifesim.config import InflationModel
+
+    tax_state = YearTaxAccumulator(2026)
+    payroll_state = PayrollState(2026)
+    macro_state = MacroState(InflationModel(), date(2026, 1, 1))
+    prior_tax_states = {}
+
+    # Trigger macro rollover which computes tax deductions
+    step_1_macro_rollover(
+        day_index=366,
+        current_date=date(2027, 1, 1),
+        current_tax_year=2026,
+        tax_state=tax_state,
+        payroll_state=payroll_state,
+        accounts_manager=manager,
+        prior_year_tax_states=prior_tax_states,
+        annual_contributions_ytd={"college_fund": 500_000},
+        macro_state=macro_state
+    )
+
+    # Verify deduction is capped at 4,000 (400,000 cents)
+    archived_tax_state = prior_tax_states[2026]
+    assert archived_tax_state.ytd_state_529_deductible_cents == 400_000

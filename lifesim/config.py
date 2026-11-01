@@ -27,7 +27,7 @@ class AccountModel(BaseModel):
     kind: Literal[
         "checking", "savings", "hysa", "cd",
         "investment", "traditional_401k", "roth_401k",
-        "traditional_ira", "roth_ira", "hsa", "529",
+        "traditional_ira", "roth_ira", "hsa", "529", "college_529",
         "credit_card", "loan", "mortgage", "student_loan", "auto_loan"
     ] = "checking"
     balance: float = 0.0
@@ -55,6 +55,7 @@ class AccountModel(BaseModel):
     cd_maturity_date: Optional[date] = None
     cd_penalty_days_interest: int = 90
     annual_contribution_limit: Optional[float] = None
+    state_tax_deduction_limit: Optional[float] = None
     # Credit card fields
     apr: float = 0.0
     promo_apr: Optional[float] = None
