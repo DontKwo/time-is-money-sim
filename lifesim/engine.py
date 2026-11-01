@@ -94,6 +94,7 @@ def run(scenario: ScenarioModel) -> Ledger:
         step_12_snapshot_and_goals(
             current_date, scenario, accounts_manager, balances, ledger, goal_tracker, daily_expenses_history
         )
+        ledger.inflation_indices[current_date] = macro_state.inflation_index
 
     ledger.goal_results, ledger.metrics = goal_tracker.results, compute_summary(scenario, ledger)
     return ledger

@@ -1,6 +1,8 @@
 from datetime import date
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import pandas as pd
+
+from .analysis import deflate_daily_records
 
 
 class Ledger:
@@ -9,6 +11,7 @@ class Ledger:
         self.daily_records: List[Dict[str, Any]] = []
         self.metrics: Dict[str, Any] = {}
         self.goal_results: List[Dict[str, Any]] = []
+        self.inflation_indices: Dict[date, float] = {}
 
     def append(
         self,
@@ -35,3 +38,11 @@ class Ledger:
 
     def daily_df(self) -> pd.DataFrame:
         return pd.DataFrame(self.daily_records)
+
+    def real_df(self, base_date: Optional[date] = None) -> pd.DataFrame:
+        indices = self.inflation_indices
+        if base_date is not None and base_date in indices:
+            base_factor = indices[base_date]
+            indices = {dt: (val / base_factor) for dt, val in indices.items()}
+        deflated_records = deflate_daily_records(self.daily_records, indices)
+        return pd.DataFrame(deflated_records)

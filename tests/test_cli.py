@@ -341,3 +341,42 @@ goals:
     assert "Monthly Cashflow" in html_content
     assert "Expense Categories" in html_content
     assert "Goal Milestones" in html_content
+
+
+def test_cli_real_dollars(tmp_path: Path) -> None:
+    scenario_file = tmp_path / "scenario_inflation.yaml"
+    scenario_file.write_text("""
+start: 2026-01-01
+days: 10
+inflation:
+  rate: 0.10
+accounts:
+  checking: {balance: 1000}
+flows:
+  - name: Rent
+    type: expense
+    from: checking
+    schedule: {monthly: 1}
+    amount: {fixed: 100}
+""")
+
+    out_ledger = tmp_path / "ledger_real.csv"
+    out_daily = tmp_path / "daily_real.csv"
+
+    test_args = [
+        "lifesim",
+        str(scenario_file),
+        "--out-ledger", str(out_ledger),
+        "--out-daily", str(out_daily),
+        "--real-dollars"
+    ]
+    with patch.object(sys, "argv", test_args):
+        main()
+
+    assert out_ledger.exists()
+    assert out_daily.exists()
+
+    import pandas as pd
+    daily_df = pd.read_csv(out_daily)
+    assert not daily_df.empty
+    assert "total_net_worth" in daily_df.columns

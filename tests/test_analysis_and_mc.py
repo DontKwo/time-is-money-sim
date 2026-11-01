@@ -180,3 +180,23 @@ def test_analytics_dataframes() -> None:
     assert "category" in cat_df.columns
     assert "total" in cat_df.columns
 
+
+def test_real_dollars_deflation() -> None:
+    scenario = ScenarioModel(
+        start=date(2026, 1, 1),
+        days=365 * 3,
+        inflation={"rate": 0.10, "volatility": 0.0},
+        accounts={"checking": {"kind": "checking", "balance": 10000.0}},
+        flows=[],
+    )
+    ledger = run(scenario)
+
+    nominal_df = ledger.daily_df()
+    real_df = ledger.real_df(scenario.start)
+
+    nominal_end_nw = nominal_df.iloc[-1]["total_net_worth"]
+    real_end_nw = real_df.iloc[-1]["total_net_worth"]
+
+    assert nominal_end_nw == 10000.0
+    assert real_end_nw < nominal_end_nw
+    assert abs(real_end_nw - (10000.0 / ((1.10) ** (3.0)))) < 100.0
