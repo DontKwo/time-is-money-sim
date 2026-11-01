@@ -6,6 +6,7 @@ from typing import Optional, List
 import pydantic
 import yaml
 
+from lifesim.analysis import compute_summary
 from lifesim.config import load_scenario
 from lifesim.engine import run
 from lifesim.plots import (
@@ -53,6 +54,7 @@ def main() -> None:
     parser.add_argument("--validate", action="store_true", help="Validate scenario file without running simulation")
     parser.add_argument("--out-sqlite", type=str, default=None, help="Output SQLite database path")
     parser.add_argument("--out-html", type=str, default=None, help="Output interactive HTML report path")
+    parser.add_argument("--real-dollars", action="store_true", help="Deflate output metrics and charts into constant purchasing power dollars")
 
     args = parser.parse_args()
 
@@ -83,6 +85,17 @@ def main() -> None:
 
     print(f"Running simulation for {scenario.days} days...")
     ledger = run(scenario)
+
+    if args.real_dollars:
+        ledger.daily_records = ledger.real_df(scenario.start).to_dict(orient="records")
+        for record in ledger.records:
+            record_date = record["date"]
+            inflation_factor = ledger.inflation_indices.get(record_date, 1.0)
+            if inflation_factor != 0.0:
+                record["amount"] = round(record["amount"] / inflation_factor, 2)
+                record["balance"] = round(record["balance"] / inflation_factor, 2)
+        ledger.metrics = compute_summary(scenario, ledger)
+
     dataframe = ledger.to_df()
 
     print(f"Exporting ledger to {args.out_ledger}...")

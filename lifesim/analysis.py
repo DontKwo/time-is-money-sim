@@ -1,10 +1,30 @@
-from typing import Dict, Any
+from datetime import date
+from typing import Dict, Any, List, TYPE_CHECKING
 import pandas as pd
 from .config import ScenarioModel
-from .ledger import Ledger
+
+if TYPE_CHECKING:
+    from .ledger import Ledger
 
 
-def compute_summary(scenario: ScenarioModel, ledger: Ledger) -> Dict[str, Any]:
+def deflate_daily_records(daily_records: List[Dict[str, Any]], macro_inflation_indices: Dict[date, float]) -> List[Dict[str, Any]]:
+    # Adjust nominal daily records into real purchasing power dollars
+    # Using the cumulative inflation factor relative to scenario start
+    deflated_records = []
+    for record in daily_records:
+        record_date = record["date"]
+        inflation_factor = macro_inflation_indices.get(record_date, 1.0)
+        deflated_record = {"date": record_date}
+        for key, value in record.items():
+            if key != "date" and isinstance(value, (int, float)):
+                deflated_record[key] = round(float(value) / inflation_factor, 2)
+            elif key != "date":
+                deflated_record[key] = value
+        deflated_records.append(deflated_record)
+    return deflated_records
+
+
+def compute_summary(scenario: ScenarioModel, ledger: "Ledger") -> Dict[str, Any]:
     daily_df = ledger.daily_df()
     tx_df = ledger.to_df()
     summary: Dict[str, Any] = {}
@@ -77,7 +97,7 @@ def compute_summary(scenario: ScenarioModel, ledger: Ledger) -> Dict[str, Any]:
     return summary
 
 
-def monthly_rollup_df(ledger: Ledger) -> pd.DataFrame:
+def monthly_rollup_df(ledger: "Ledger") -> pd.DataFrame:
     tx_df = ledger.to_df()
     if tx_df.empty:
         return pd.DataFrame()
@@ -100,7 +120,7 @@ def monthly_rollup_df(ledger: Ledger) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def category_summary_df(ledger: Ledger) -> pd.DataFrame:
+def category_summary_df(ledger: "Ledger") -> pd.DataFrame:
     tx_df = ledger.to_df()
     if tx_df.empty:
         return pd.DataFrame()
