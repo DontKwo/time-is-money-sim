@@ -522,8 +522,9 @@ def default_single_ltcg_brackets() -> List[TaxBracket]:
 
 class TaxConfigModel(BaseModel):
     enabled: bool = False
-    filing_status: Literal["single", "married_joint", "head_of_household"] = "single"
+    filing_status: Literal["single", "married_joint", "married_separate", "head_of_household"] = "single"
     standard_deduction: Optional[float] = None
+    salt_cap: Optional[float] = None
     federal_brackets: List[TaxBracket] = Field(default_factory=default_single_federal_brackets)
     ltcg_brackets: List[TaxBracket] = Field(default_factory=default_single_ltcg_brackets)
     state_flat_rate: float = 0.0

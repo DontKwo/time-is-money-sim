@@ -169,3 +169,49 @@ def test_medical_shock_capped_by_oop_max() -> None:
     charge_cents_2 = min(raw_cents, max(0, oop_max_cents - used_oop_2))
     assert charge_cents_2 == 0
 
+
+def test_itemized_deductions_homeowner_tax_savings() -> None:
+    # Homeowner paying $18,000 mortgage interest and $8,000 property taxes gets $26,000 itemized deductions.
+    tax_config = TaxConfigModel(
+        enabled=True,
+        filing_status="single",
+        standard_deduction=15_000.0,
+        federal_brackets=[
+            TaxBracket(rate=0.10, threshold=0.0),
+            TaxBracket(rate=0.20, threshold=20_000.0),
+        ],
+        state_flat_rate=0.05,
+    )
+    # Scenario without itemized deductions (using standard deduction of $15,000)
+    tax_state_standard = YearTaxAccumulator(2026)
+    tax_state_standard.ytd_taxable_ordinary_cents = 6_000_000
+    settlement_standard_cents = compute_april_settlement_cents(tax_state_standard, tax_config)
+
+    # Scenario with itemized deductions ($18k interest + $8k property tax = $26k deductions)
+    tax_state_itemized = YearTaxAccumulator(2026)
+    tax_state_itemized.ytd_taxable_ordinary_cents = 6_000_000
+    tax_state_itemized.ytd_mortgage_interest_cents = 1_800_000
+    tax_state_itemized.ytd_property_tax_cents = 800_000
+    settlement_itemized_cents = compute_april_settlement_cents(tax_state_itemized, tax_config)
+
+    # Taxable income decreases from $45,000 to $34,000 ($11,000 difference taxed at 20% fed + 5% state = 25%)
+    assert settlement_itemized_cents < settlement_standard_cents
+    tax_savings_cents = settlement_standard_cents - settlement_itemized_cents
+    assert tax_savings_cents == 275_000
+
+
+def test_salt_cap_married_separate_and_joint() -> None:
+    # Property tax of $12,000 is capped at $10,000 for single and $5,000 for married separate.
+    single_config = TaxConfigModel(enabled=True, filing_status="single", standard_deduction=10_000.0)
+    separate_config = TaxConfigModel(enabled=True, filing_status="married_separate", standard_deduction=10_000.0)
+
+    tax_state = YearTaxAccumulator(2026)
+    tax_state.ytd_taxable_ordinary_cents = 5_000_000
+    tax_state.ytd_mortgage_interest_cents = 500_000
+    tax_state.ytd_property_tax_cents = 1_200_000
+
+    single_settlement_cents = compute_april_settlement_cents(tax_state, single_config)
+    separate_settlement_cents = compute_april_settlement_cents(tax_state, separate_config)
+
+    # Single gets $5k mortgage + $10k SALT = $15k deductions; Separate gets $5k mortgage + $5k SALT = $10k deductions
+    assert separate_settlement_cents > single_settlement_cents
