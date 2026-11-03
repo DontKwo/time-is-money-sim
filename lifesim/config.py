@@ -14,6 +14,13 @@ class RateStepModel(BaseModel):
     volatility: Optional[float] = None
 
 
+AccountKind = Literal[
+    "checking", "savings", "hysa", "cd",
+    "investment", "traditional_401k", "roth_401k",
+    "traditional_ira", "roth_ira", "hsa", "529", "college_529",
+    "credit_card", "loan", "mortgage", "student_loan", "auto_loan"
+]
+
 class CardAutopaySpec(BaseModel):
     enabled: bool = True
     from_account: str = "checking"
@@ -24,12 +31,7 @@ class CardAutopaySpec(BaseModel):
 class AccountModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    kind: Literal[
-        "checking", "savings", "hysa", "cd",
-        "investment", "traditional_401k", "roth_401k",
-        "traditional_ira", "roth_ira", "hsa", "529", "college_529",
-        "credit_card", "loan", "mortgage", "student_loan", "auto_loan"
-    ] = "checking"
+    kind: AccountKind = "checking"
     balance: float = 0.0
     principal: Optional[float] = None
     initial_cost_basis: Optional[float] = None
