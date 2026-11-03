@@ -331,3 +331,65 @@ def test_salt_cap_married_separate_and_joint() -> None:
 
     # Single gets $5k mortgage + $10k SALT = $15k deductions; Separate gets $5k mortgage + $5k SALT = $10k deductions
     assert separate_settlement_cents > single_settlement_cents
+
+def test_niit_and_additional_medicare_tax() -> None:
+    # 1. Single taxpayer below $200k threshold. No NIIT or Additional Medicare.
+    config_single_under = TaxConfigModel(
+        enabled=True,
+        filing_status="single",
+        standard_deduction=0.0,
+        federal_brackets=[],
+        ltcg_brackets=[],
+        state_flat_rate=0.0
+    )
+    tax_state = YearTaxAccumulator(2026)
+    tax_state.ytd_fica_wages_cents = 15_000_000 # $150,000 earned
+    tax_state.ytd_taxable_interest_cents = 1_000_000 # $10,000 NII
+    # Note: max wage base for 2026 is $176,100, which is higher than $150,000. So we withhold on 150k.
+    tax_state.ytd_fica_withheld_cents = int(round(15_000_000 * 0.062)) + int(round(15_000_000 * 0.0145))
+    tax_state.ytd_taxable_ordinary_cents = tax_state.ytd_fica_wages_cents
+
+    settlement = compute_april_settlement_cents(tax_state, config_single_under)
+    # MAGI = 160k, statutory threshold = 200k, niit = 0, additional medicare = 0.
+    assert settlement == 0
+
+    # 2. Single taxpayer above $200k threshold.
+    # $200,000 earned, $50,000 NII. MAGI = $250,000.
+    config_single_over = TaxConfigModel(
+        enabled=True,
+        filing_status="single",
+        standard_deduction=0.0,
+        federal_brackets=[],
+        ltcg_brackets=[],
+        state_flat_rate=0.0
+    )
+    tax_state_over = YearTaxAccumulator(2026)
+    tax_state_over.ytd_fica_wages_cents = 20_000_000 # $200,000 earned
+    tax_state_over.ytd_taxable_interest_cents = 5_000_000 # $50,000 NII
+    # base FICA withheld but MAGI > 200k. Earned is exactly 200k, so no addl medicare.
+    tax_state_over.ytd_fica_withheld_cents = int(round(17_610_000 * 0.062)) + int(round(20_000_000 * 0.0145))
+    tax_state_over.ytd_taxable_ordinary_cents = tax_state_over.ytd_fica_wages_cents
+
+    settlement = compute_april_settlement_cents(tax_state_over, config_single_over)
+    # NII = 50k, MAGI - 200k = 50k. Lesser is 50k. NIIT = 3.8% of 50k = $1,900
+    assert settlement == 190_000
+
+    # 3. MFJ taxpayer above $250k threshold.
+    # $300,000 earned, no NII. MAGI = $300,000.
+    config_mfj_over = TaxConfigModel(
+        enabled=True,
+        filing_status="married_joint",
+        standard_deduction=0.0,
+        federal_brackets=[],
+        ltcg_brackets=[],
+        state_flat_rate=0.0
+    )
+    tax_state_mfj = YearTaxAccumulator(2026)
+    tax_state_mfj.ytd_fica_wages_cents = 30_000_000 # $300,000 earned
+    tax_state_mfj.ytd_taxable_interest_cents = 0 # no NII
+    tax_state_mfj.ytd_fica_withheld_cents = int(round(17_610_000 * 0.062)) + int(round(30_000_000 * 0.0145))
+    tax_state_mfj.ytd_taxable_ordinary_cents = tax_state_mfj.ytd_fica_wages_cents
+
+    settlement = compute_april_settlement_cents(tax_state_mfj, config_mfj_over)
+    # Earned > 250k threshold by 50k. Additional Medicare = 0.9% of 50k = $450
+    assert settlement == 45_000

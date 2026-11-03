@@ -143,7 +143,29 @@ def compute_april_settlement_cents(
     fed_ltcg_tax_cents = compute_ltcg_tax_cents(taxable_ordinary_cents, total_ltcg_cents, config.ltcg_brackets)
 
     penalty_529_cents = int(round(tax_state.ytd_529_non_qualified_earnings_cents * 0.10))
-    total_fed_tax_cents = fed_ordinary_tax_cents + fed_ltcg_tax_cents + penalty_529_cents
+
+    if config.filing_status == "married_joint":
+        stat_threshold_dollars = 250_000.0
+    elif config.filing_status == "married_separate":
+        stat_threshold_dollars = 125_000.0
+    else:
+        stat_threshold_dollars = 200_000.0
+    stat_threshold_cents = int(round(stat_threshold_dollars * 100.0))
+
+    magi_cents = ordinary_gross_cents + total_ltcg_cents - tax_state.ytd_traditional_ira_deductible_cents
+    nii_cents = tax_state.ytd_taxable_interest_cents + total_ltcg_cents
+    niit_taxable_cents = min(nii_cents, max(0, magi_cents - stat_threshold_cents))
+    niit_cents = int(round(niit_taxable_cents * 0.038))
+
+    earned_income_cents = tax_state.ytd_fica_wages_cents
+    ss_wage_base_cents = int(round(config.ss_wage_base * 100.0))
+    total_ss_cents = int(round(min(earned_income_cents, ss_wage_base_cents) * 0.062))
+    base_med_cents = int(round(earned_income_cents * 0.0145))
+    addl_med_cents = int(round(max(0, earned_income_cents - stat_threshold_cents) * 0.009))
+    fica_liability_cents = total_ss_cents + base_med_cents + addl_med_cents
+    fica_shortfall_cents = fica_liability_cents - tax_state.ytd_fica_withheld_cents
+
+    total_fed_tax_cents = fed_ordinary_tax_cents + fed_ltcg_tax_cents + penalty_529_cents + niit_cents + fica_shortfall_cents
 
     combined_state_taxable = taxable_ordinary_cents + total_ltcg_cents
     combined_state_taxable = max(0, combined_state_taxable - tax_state.ytd_state_529_deductible_cents)
