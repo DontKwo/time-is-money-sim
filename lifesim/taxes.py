@@ -19,6 +19,7 @@ class YearTaxAccumulator:
         self.ytd_fica_withheld_cents: int = 0
         self.ytd_529_non_qualified_earnings_cents: int = 0
         self.ytd_state_529_deductible_cents: int = 0
+        self.ytd_charitable_deduction_cents: int = 0
 
 
 def compute_fica_cents(
@@ -131,11 +132,19 @@ def compute_april_settlement_cents(
     else:
         salt_cap_cents = 1_000_000
 
+    ordinary_gross_cents = tax_state.ytd_taxable_ordinary_cents + tax_state.ytd_taxable_interest_cents + tax_state.ytd_529_non_qualified_earnings_cents
+    total_ltcg_cents = tax_state.ytd_realized_cap_gains_cents + tax_state.ytd_qualified_dividends_cents
+    agi_cents = ordinary_gross_cents + total_ltcg_cents
+
     allowable_salt_cents = min(salt_cap_cents, tax_state.ytd_property_tax_cents)
-    itemized_deductions_cents = tax_state.ytd_mortgage_interest_cents + allowable_salt_cents
+
+    # Apply AGI limit to charitable deductions (assuming 30% for appreciated assets to DAF)
+    agi_limit_charitable_cents = int(round(agi_cents * 0.30))
+    allowable_charitable_cents = min(tax_state.ytd_charitable_deduction_cents, agi_limit_charitable_cents)
+
+    itemized_deductions_cents = tax_state.ytd_mortgage_interest_cents + allowable_salt_cents + allowable_charitable_cents
     deductions_cents = max(standard_deduction_cents, itemized_deductions_cents) + tax_state.ytd_traditional_ira_deductible_cents
 
-    ordinary_gross_cents = tax_state.ytd_taxable_ordinary_cents + tax_state.ytd_taxable_interest_cents + tax_state.ytd_529_non_qualified_earnings_cents
     taxable_ordinary_cents = max(0, ordinary_gross_cents - deductions_cents)
 
     fed_ordinary_tax_cents = compute_progressive_tax_cents(taxable_ordinary_cents, config.federal_brackets)

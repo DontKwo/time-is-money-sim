@@ -1,9 +1,10 @@
 from datetime import date, timedelta
 from lifesim.config import PolicyModel, AccountModel
-from lifesim.policies import apply_payday_skim, apply_debt_payoff, apply_roth_conversion_ladder
+from lifesim.policies import apply_payday_skim, apply_debt_payoff, apply_roth_conversion_ladder, apply_daf_contribution
 from lifesim.accounts import AccountManager
 from lifesim.ledger import Ledger
 from lifesim.payroll import PayrollState
+from lifesim.taxes import YearTaxAccumulator
 
 
 def test_ira_cap_overflow_to_brokerage() -> None:
@@ -165,3 +166,65 @@ def test_roth_conversion_ladder() -> None:
     # Seasoning bucket should only record the 5k transfer
     assert len(manager.roth_conversion_seasoning) == 2
     assert manager.roth_conversion_seasoning[1] == (current_date_2, 500000)
+
+
+def test_apply_daf_contribution() -> None:
+    policy = PolicyModel(
+        name="DAF Contribution",
+        kind="daf_contribution",
+        from_account="brokerage",
+        daf_contribution_amount=5000.0,
+    )
+
+    balances = {"brokerage": 1000000}  # $10,000 available
+    ledger = Ledger()
+    tax_state = YearTaxAccumulator(2026)
+    current_date = date(2026, 11, 1)
+
+    accounts = {
+        "brokerage": AccountModel(kind="investment", balance=10000.0)
+    }
+    manager = AccountManager(accounts, base_seed=42)
+    manager.balances = balances
+    manager.cost_bases["brokerage"] = 800000 # Cost basis is 8k dollars for 10k value
+
+    donated = apply_daf_contribution(
+        policy,
+        manager.balances,
+        ledger,
+        current_date,
+        tax_state,
+        manager
+    )
+
+    # Should deduct 5k dollars = 500k cents
+    assert donated == 500000
+    assert manager.balances["brokerage"] == 500000
+    assert tax_state.ytd_charitable_deduction_cents == 500000
+    assert manager.cost_bases["brokerage"] == 400000 # Deducted 50% of value, so deducted 50% of cost basis
+
+    # Ensure no capital gains were triggered (taxable values should remain zero)
+    assert tax_state.ytd_realized_cap_gains_cents == 0
+    assert tax_state.ytd_taxable_ordinary_cents == 0
+
+    # Test limit: can't donate more than available
+    policy_too_large = PolicyModel(
+        name="Large DAF Contribution",
+        kind="daf_contribution",
+        from_account="brokerage",
+        daf_contribution_amount=10000.0,
+    )
+
+    donated_2 = apply_daf_contribution(
+        policy_too_large,
+        manager.balances,
+        ledger,
+        current_date,
+        tax_state,
+        manager
+    )
+
+    # Only remaining 5k is available
+    assert donated_2 == 500000
+    assert balances["brokerage"] == 0
+    assert tax_state.ytd_charitable_deduction_cents == 1000000

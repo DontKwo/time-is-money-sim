@@ -440,6 +440,57 @@ def apply_roth_conversion_ladder(
     return transfer_cents
 
 
+def apply_daf_contribution(
+    policy: PolicyModel,
+    balances: Dict[str, int],
+    ledger: Any,
+    current_date: date,
+    tax_state: Any,
+    accounts_manager: Any,
+) -> int:
+    from_acc = policy.from_account or "brokerage"
+    amount_dollars = policy.daf_contribution_amount
+
+    if amount_dollars is None or amount_dollars <= 0:
+        return 0
+
+    contribution_cents = int(round(amount_dollars * 100.0))
+    available_cents = max(0, balances.get(from_acc, 0))
+    donated_cents = min(contribution_cents, available_cents)
+
+    if donated_cents <= 0:
+        return 0
+
+    # Withdraw the donation without triggering capital gains taxes,
+    # but still properly reducing tax basis (it is treated as appreciated shares donated)
+    if accounts_manager:
+        # Instead of generic record_withdrawal, we manually adjust basis for donation
+        config = accounts_manager.configs.get(from_acc)
+        if config and config.kind in ("investment",):
+            pre_balance = balances.get(from_acc, 0)
+            if pre_balance > 0:
+                fraction_sold = min(1.0, donated_cents / pre_balance)
+                existing_basis = accounts_manager.cost_bases.get(from_acc, 0)
+                basis_removed = int(round(existing_basis * fraction_sold))
+                accounts_manager.cost_bases[from_acc] = max(0, existing_basis - basis_removed)
+                # Note: No realized_gain is added to tax accumulator
+
+    balances[from_acc] -= donated_cents
+    if tax_state:
+        tax_state.ytd_charitable_deduction_cents += donated_cents
+
+    ledger.append(
+        current_date,
+        "DAF Contribution",
+        -donated_cents,
+        from_acc,
+        balances[from_acc],
+        tx_kind="expense"
+    )
+
+    return donated_cents
+
+
 def apply_sinking_fund(
     policy: PolicyModel,
     balances: Dict[str, int],

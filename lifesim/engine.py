@@ -91,7 +91,7 @@ def run(scenario: ScenarioModel) -> Ledger:
         step_9_credit_cards(current_date, scenario, accounts_manager, policies, balances, ledger)
         step_10_policies(
             current_date, scenario, accounts_manager, balances, ledger, policies, policy_fire_counts,
-            annual_contributions_ytd, monthly_debt_payments_made, daily_expenses_history, payroll_state
+            annual_contributions_ytd, monthly_debt_payments_made, daily_expenses_history, payroll_state, tax_state
         )
         step_11_returns_and_interest(current_date, accounts_manager, ledger)
 

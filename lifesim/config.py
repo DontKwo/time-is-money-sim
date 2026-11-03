@@ -369,7 +369,8 @@ class PolicyModel(BaseModel):
     kind: Literal[
         "shortfall_cover", "payday_skim", "emergency_fund_target",
         "excess_sweep", "debt_payoff", "portfolio_rebalance",
-        "retirement_drawdown", "sinking_fund", "roth_conversion_ladder"
+        "retirement_drawdown", "sinking_fund", "roth_conversion_ladder",
+        "daf_contribution"
     ]
     enabled: bool = True
     start: Optional[date] = None
@@ -389,6 +390,7 @@ class PolicyModel(BaseModel):
     keep_checking_buffer: float = 2000.0
     conversion_amount: Optional[float] = None
     seasoning_years: int = 5
+    daf_contribution_amount: Optional[float] = None
     target_balance: Optional[float] = None
     target_months_expenses: Optional[float] = None
     threshold: float = 5000.0

@@ -30,6 +30,7 @@ from .policies import (
     apply_retirement_drawdown,
     apply_roth_conversion_ladder,
     apply_sinking_fund,
+    apply_daf_contribution,
 )
 from .events import EventManager
 from .goals import GoalTracker
@@ -683,6 +684,7 @@ def step_10_policies(
     monthly_debt_payments_made: Dict[str, int],
     daily_expenses_history: List[int],
     payroll_state: PayrollState,
+    tax_state: YearTaxAccumulator,
 ) -> None:
     # Execute debt payoff, sweeps, and retirement drawdown policies
     if current_date.day == 1:
@@ -745,7 +747,8 @@ def step_10_policies(
                 balances,
                 ledger,
                 current_date,
-                payroll_state,
+                tax_state,
+                accounts_manager,
             )
         elif policy.kind == "roth_conversion_ladder":
             apply_roth_conversion_ladder(
@@ -755,6 +758,14 @@ def step_10_policies(
                 current_date,
                 payroll_state,
                 accounts_manager,
+            )
+        elif policy.kind == "daf_contribution":
+            apply_daf_contribution(
+                policy,
+                balances,
+                ledger,
+                current_date,
+                payroll_state,
             )
         elif policy.kind == "sinking_fund":
             apply_sinking_fund(
