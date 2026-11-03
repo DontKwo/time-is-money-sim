@@ -3,8 +3,90 @@ from datetime import date, timedelta
 from typing import Dict, Any, List, Optional
 import numpy as np
 
-from .config import ScenarioModel
+from .config import ScenarioModel, RateStepModel
 from .engine import run
+
+
+HISTORICAL_CRISES = {
+    "1929_depression": [
+        {"duration_days": 365, "rate": -0.119, "volatility": 0.25},
+        {"duration_days": 365, "rate": -0.251, "volatility": 0.35},
+        {"duration_days": 365, "rate": -0.438, "volatility": 0.40},
+        {"duration_days": 365, "rate": -0.082, "volatility": 0.30},
+    ],
+    "1973_stagflation": [
+        {"duration_days": 365, "rate": -0.147, "volatility": 0.20},
+        {"duration_days": 365, "rate": -0.265, "volatility": 0.25},
+        {"duration_days": 365, "rate": 0.372, "volatility": 0.15},
+    ],
+    "2000_dotcom": [
+        {"duration_days": 365, "rate": -0.091, "volatility": 0.20},
+        {"duration_days": 365, "rate": -0.119, "volatility": 0.25},
+        {"duration_days": 365, "rate": -0.221, "volatility": 0.30},
+    ],
+    "2008_gfc": [
+        {"duration_days": 365, "rate": -0.385, "volatility": 0.45},
+        {"duration_days": 365, "rate": 0.265, "volatility": 0.20},
+        {"duration_days": 365, "rate": 0.151, "volatility": 0.15},
+    ],
+}
+
+
+def simulate_historical_crisis(scenario: ScenarioModel, crisis_type: str) -> dict[str, Any]:
+    if crisis_type not in HISTORICAL_CRISES:
+        raise ValueError(f"Unknown crisis_type: {crisis_type}. Must be one of {list(HISTORICAL_CRISES.keys())}")
+
+    crisis_scenario = scenario.model_copy(deep=True)
+    sequence = HISTORICAL_CRISES[crisis_type]
+
+    for acc_name, acc in crisis_scenario.accounts.items():
+        if acc.kind in ("investment", "traditional_401k", "roth_401k", "traditional_ira", "roth_ira", "hsa", "529"):
+            acc.rate_steps = []
+            current_start = crisis_scenario.start
+
+            for step in sequence:
+                end_date = current_start + timedelta(days=step["duration_days"] - 1)
+                acc.rate_steps.append(
+                    RateStepModel(
+                        start=current_start,
+                        end=end_date,
+                        rate=step["rate"],
+                        volatility=step["volatility"],
+                    )
+                )
+                current_start = end_date + timedelta(days=1)
+
+            acc.rate_steps.append(
+                RateStepModel(
+                    start=current_start,
+                    end=None,
+                    rate=acc.expected_return if acc.expected_return is not None else acc.annual_growth_rate,
+                    volatility=acc.volatility,
+                )
+            )
+
+    ledger = run(crisis_scenario)
+    daily_df = ledger.daily_df()
+
+    total_net_worth = daily_df["total_net_worth"].values
+    max_drawdown = 0.0
+    peak = total_net_worth[0]
+
+    for nw in total_net_worth:
+        if nw > peak:
+            peak = nw
+        dd = (peak - nw) / peak if peak > 0 else 0.0
+        if dd > max_drawdown:
+            max_drawdown = dd
+
+    return {
+        "crisis_type": crisis_type,
+        "days_simulated": len(daily_df),
+        "start_net_worth": float(total_net_worth[0]),
+        "end_net_worth": float(total_net_worth[-1]),
+        "max_drawdown_pct": float(max_drawdown * 100.0),
+        "is_bankrupt": float(total_net_worth[-1]) < 0.0,
+    }
 
 
 @dataclass
