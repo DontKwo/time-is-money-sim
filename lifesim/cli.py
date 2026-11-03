@@ -50,7 +50,7 @@ def main() -> None:
         help="Other scenario YAML paths to compare against",
     )
     parser.add_argument("--out-compare-plot", type=str, default="comparison.png", help="Comparison plot path")
-    parser.add_argument("--sensitivity", action="store_true", help="Run tornado sensitivity analysis")
+    parser.add_argument("--sensitivity", nargs="*", default=None, help="Run tornado sensitivity or grid analysis")
     parser.add_argument("--out-tornado-plot", type=str, default="sensitivity.png", help="Tornado plot path")
     parser.add_argument("--validate", action="store_true", help="Validate scenario file without running simulation")
     parser.add_argument("--out-sqlite", type=str, default=None, help="Output SQLite database path")
@@ -179,9 +179,20 @@ def main() -> None:
         comparison_result = compare_scenarios(named_scenarios)
         plot_scenario_comparison(comparison_result, args.out_compare_plot)
 
-    if args.sensitivity:
-        sensitivity_result = run_sensitivity_analysis(scenario)
-        plot_sensitivity_tornado(sensitivity_result, args.out_tornado_plot)
+    if args.sensitivity is not None:
+        if len(args.sensitivity) == 0:
+            sensitivity_result = run_sensitivity_analysis(scenario)
+            plot_sensitivity_tornado(sensitivity_result, args.out_tornado_plot)
+        else:
+            if len(args.sensitivity) < 2:
+                print("Error: --sensitivity grid requires a parameter name and at least one value.")
+                sys.exit(1)
+            param_name = args.sensitivity[0]
+            values = [float(val) for val in args.sensitivity[1:]]
+            from lifesim.sensitivity import run_sensitivity_grid
+            grid_df = run_sensitivity_grid(args.scenario, param_name, values)
+            print("Sensitivity Grid Results:")
+            print(grid_df.to_string(index=False))
 
     print("Done!")
 

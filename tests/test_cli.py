@@ -501,3 +501,32 @@ flows:
     names = df["Scenario"].tolist()
     assert "scenario_1.yaml" in names
     assert "scenario_2.yaml" in names
+
+def test_cli_sensitivity_grid(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    scenario_file = tmp_path / "scenario_grid.yaml"
+    scenario_file.write_text("""
+start: 2026-01-01
+days: 10
+accounts:
+  checking: {balance: 1000}
+goals:
+  - name: Build Emergency
+    kind: account_balance
+    account: checking
+    target_amount: 1500
+flows: []
+""")
+
+    test_args = [
+        "lifesim",
+        str(scenario_file),
+        "--sensitivity", "accounts.checking.balance", "1000", "2000",
+    ]
+    with patch.object(sys, "argv", test_args):
+        main()
+
+    captured = capsys.readouterr()
+    assert "Sensitivity Grid Results:" in captured.out
+    assert "accounts.checking.balance" in captured.out
+    assert "1000.0" in captured.out
+    assert "2000.0" in captured.out
