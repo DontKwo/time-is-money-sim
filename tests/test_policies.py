@@ -165,3 +165,44 @@ def test_roth_conversion_ladder() -> None:
     # Seasoning bucket should only record the 5k transfer
     assert len(manager.roth_conversion_seasoning) == 2
     assert manager.roth_conversion_seasoning[1] == (current_date_2, 500000)
+
+def test_backdoor_roth_pro_rata() -> None:
+    from lifesim.policies import apply_backdoor_roth
+
+    policy = PolicyModel(
+        name="Backdoor Roth",
+        kind="backdoor_roth",
+        from_account="checking",
+        to_account="roth_ira",
+        fixed_amount=7000.0,
+    )
+
+    balances = {
+        "checking": 1000000, # 10k
+        "traditional_ira": 300000, # 3k pre-tax balance
+        "roth_ira": 0,
+    }
+
+    ledger = Ledger()
+    payroll_state = PayrollState(2026)
+    current_date = date(2026, 1, 1)
+
+    apply_backdoor_roth(
+        policy,
+        balances,
+        ledger,
+        current_date,
+        payroll_state
+    )
+
+    # 7k transfer from checking to trad -> roth
+    # New checking balance = 10k - 7k = 3k = 300000 cents
+    assert balances["checking"] == 300000
+
+    # Roth IRA should increase by 700000 cents
+    assert balances["roth_ira"] == 700000
+
+    # Taxable pct = 300000 / 1000000 = 0.3
+    # Taxable amount = 700000 * 0.3 = 210000 cents
+
+    assert payroll_state.ytd_taxable_ordinary_cents == 210000

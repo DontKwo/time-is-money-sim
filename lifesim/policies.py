@@ -488,3 +488,44 @@ def apply_sinking_fund(
     ledger.append(current_date, f"{policy.name} to {to_account}", transfer_cents, to_account, balances[to_account])
     ledger.append(current_date, f"{policy.name} to {to_account}", -transfer_cents, from_account, balances[from_account])
     return transfer_cents
+
+
+def apply_backdoor_roth(
+    policy: PolicyModel,
+    balances: Dict[str, int],
+    ledger: Any,
+    current_date: date,
+    payroll_state: Any,
+) -> int:
+    """Executes a Backdoor Roth IRA conversion including pro-rata taxation."""
+    from_acc = policy.from_account or "checking"
+    to_acc = policy.to_account or "roth_ira"
+    trad_ira = "traditional_ira"
+
+    conversion_dollars = policy.fixed_amount if policy.fixed_amount is not None else policy.conversion_amount
+    if conversion_dollars is None or conversion_dollars <= 0:
+        return 0
+
+    conversion_cents = int(round(conversion_dollars * 100.0))
+    available_cents = max(0, balances.get(from_acc, 0))
+    transfer_cents = min(conversion_cents, available_cents)
+
+    if transfer_cents <= 0:
+        return 0
+
+    pre_tax_trad_balance = max(0, balances.get(trad_ira, 0))
+    total_trad_balance = pre_tax_trad_balance + transfer_cents
+
+    taxable_pct = pre_tax_trad_balance / total_trad_balance if total_trad_balance > 0 else 0.0
+    taxable_cents = int(round(transfer_cents * taxable_pct))
+
+    balances[from_acc] -= transfer_cents
+    balances[to_acc] = balances.get(to_acc, 0) + transfer_cents
+
+    if payroll_state:
+        payroll_state.ytd_taxable_ordinary_cents += taxable_cents
+
+    ledger.append(current_date, "Backdoor Roth Contribution", -transfer_cents, from_acc, balances[from_acc], tx_kind="transfer")
+    ledger.append(current_date, "Backdoor Roth Conversion", transfer_cents, to_acc, balances[to_acc], tx_kind="transfer")
+
+    return transfer_cents

@@ -30,6 +30,7 @@ from .policies import (
     apply_retirement_drawdown,
     apply_roth_conversion_ladder,
     apply_sinking_fund,
+    apply_backdoor_roth,
 )
 from .events import EventManager
 from .goals import GoalTracker
@@ -763,6 +764,14 @@ def step_10_policies(
                 ledger,
                 current_date,
                 scenario.flows,
+            )
+        elif policy.kind == "backdoor_roth":
+            apply_backdoor_roth(
+                policy,
+                balances,
+                ledger,
+                current_date,
+                payroll_state,
             )
 
 
