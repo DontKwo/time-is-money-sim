@@ -180,18 +180,18 @@ flows:
     db_cursor.execute("PRAGMA index_list(transactions)")
     tx_indexes: List[str] = [index_info[1] for index_info in db_cursor.fetchall()]
     assert "idx_transactions_date" in tx_indexes
-    assert "idx_transactions_account" in tx_indexes
+    assert "idx_transactions_category" in tx_indexes
 
     db_cursor.execute("SELECT date, flow, amount FROM transactions WHERE account='checking'")
     query_rows: List[Tuple] = db_cursor.fetchall()
     assert len(query_rows) == tx_count_row[0]
 
-    # Verify daily_balances table schema and rows
-    db_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='daily_balances'")
+    # Verify daily_records table schema and rows
+    db_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='daily_records'")
     daily_table_result = db_cursor.fetchone()
     assert daily_table_result is not None
 
-    db_cursor.execute("PRAGMA table_info(daily_balances)")
+    db_cursor.execute("PRAGMA table_info(daily_records)")
     daily_columns: List[str] = [column_info[1] for column_info in db_cursor.fetchall()]
     base_daily_cols = [
         "date",
@@ -206,16 +206,16 @@ flows:
     assert "checking" in daily_columns
     assert "savings" in daily_columns
 
-    db_cursor.execute("SELECT COUNT(*) FROM daily_balances")
+    db_cursor.execute("SELECT COUNT(*) FROM daily_records")
     daily_count_row = db_cursor.fetchone()
     assert daily_count_row is not None
     assert daily_count_row[0] == 10
 
-    db_cursor.execute("PRAGMA index_list(daily_balances)")
+    db_cursor.execute("PRAGMA index_list(daily_records)")
     daily_indexes: List[str] = [index_info[1] for index_info in db_cursor.fetchall()]
-    assert "idx_daily_balances_date" in daily_indexes
+    assert "idx_daily_records_date" in daily_indexes
 
-    db_cursor.execute("SELECT date, total_net_worth, checking, savings FROM daily_balances")
+    db_cursor.execute("SELECT date, total_net_worth, checking, savings FROM daily_records")
     daily_query_rows: List[Tuple] = db_cursor.fetchall()
     assert len(daily_query_rows) == 10
 

@@ -4,7 +4,7 @@ from typing import List, Dict, Any
 from .ledger import Ledger
 
 
-def export_to_sqlite(ledger: Ledger, db_path: str) -> None:
+def export_ledger_to_sqlite(ledger: Ledger, db_path: str) -> None:
     # Ensure destination directory exists before connecting.
     target_path = Path(db_path)
     target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -25,7 +25,7 @@ def export_to_sqlite(ledger: Ledger, db_path: str) -> None:
         )
     """)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_transactions_account ON transactions(account)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category)")
 
     # Prepare and insert transactions records.
     tx_rows: List[tuple] = []
@@ -47,7 +47,7 @@ def export_to_sqlite(ledger: Ledger, db_path: str) -> None:
             tx_rows,
         )
 
-    # Determine dynamic account columns for daily_balances table.
+    # Determine dynamic account columns for daily_records table.
     fixed_fields = [
         "date",
         "total_net_worth",
@@ -73,15 +73,15 @@ def export_to_sqlite(ledger: Ledger, db_path: str) -> None:
     for account_name in account_names:
         daily_column_defs.append(f'"{account_name}" REAL')
 
-    daily_table_sql = f"CREATE TABLE IF NOT EXISTS daily_balances ({', '.join(daily_column_defs)})"
+    daily_table_sql = f"CREATE TABLE IF NOT EXISTS daily_records ({', '.join(daily_column_defs)})"
     cursor.execute(daily_table_sql)
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_daily_balances_date ON daily_balances(date)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_daily_records_date ON daily_records(date)")
 
     # Insert daily records with dynamic account balance values.
     all_daily_columns = fixed_fields + account_names
     quoted_columns = [f'"{column_name}"' for column_name in all_daily_columns]
     placeholders = ", ".join(["?"] * len(all_daily_columns))
-    insert_daily_sql = f"INSERT INTO daily_balances ({', '.join(quoted_columns)}) VALUES ({placeholders})"
+    insert_daily_sql = f"INSERT INTO daily_records ({', '.join(quoted_columns)}) VALUES ({placeholders})"
 
     daily_rows: List[tuple] = []
     for daily_entry in ledger.daily_records:

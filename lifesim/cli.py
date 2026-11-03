@@ -20,7 +20,7 @@ from lifesim.plots import (
 )
 from lifesim.montecarlo import run_monte_carlo
 from lifesim.compare import compare_scenarios, run_sensitivity_analysis
-from lifesim.db import export_to_sqlite
+from lifesim.db import export_ledger_to_sqlite
 from lifesim.report import generate_html_report
 from lifesim.batch import run_batch, format_batch_summary
 
@@ -141,7 +141,7 @@ def main() -> None:
         daily_dataframe.to_csv(args.out_daily, index=False)
 
     if args.out_sqlite is not None:
-        export_to_sqlite(ledger, args.out_sqlite)
+        export_ledger_to_sqlite(ledger, args.out_sqlite)
 
     if args.out_html is not None:
         print(f"Generating HTML report to {args.out_html}...")
