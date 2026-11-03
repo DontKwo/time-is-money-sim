@@ -440,6 +440,58 @@ def apply_roth_conversion_ladder(
     return transfer_cents
 
 
+def apply_mega_backdoor_roth(
+    policy: PolicyModel,
+    balances: Dict[str, int],
+    ledger: Any,
+    current_date: date,
+    annual_contributions_ytd: Dict[str, int],
+) -> int:
+    source_acc = policy.after_tax_source_account
+    target_acc = policy.roth_target_account
+
+    if not source_acc or not target_acc:
+        return 0
+
+    available_cents = max(0, balances.get(source_acc, 0))
+    if available_cents <= 0:
+        return 0
+
+    transfer_cents = available_cents
+
+    if policy.annual_contribution_limit is not None and policy.respect_annual_limit:
+        cap_cents = int(round(policy.annual_contribution_limit * 100.0))
+        used_so_far = annual_contributions_ytd.get(target_acc, 0)
+        available_room = max(0, cap_cents - used_so_far)
+        transfer_cents = min(transfer_cents, available_room)
+
+    if transfer_cents <= 0:
+        return 0
+
+    balances[source_acc] -= transfer_cents
+    balances[target_acc] = balances.get(target_acc, 0) + transfer_cents
+    annual_contributions_ytd[target_acc] = annual_contributions_ytd.get(target_acc, 0) + transfer_cents
+
+    ledger.append(
+        current_date,
+        "Mega-Backdoor Roth Rollover",
+        -transfer_cents,
+        source_acc,
+        balances[source_acc],
+        tx_kind="transfer"
+    )
+    ledger.append(
+        current_date,
+        "Mega-Backdoor Roth Rollover",
+        transfer_cents,
+        target_acc,
+        balances[target_acc],
+        tx_kind="transfer"
+    )
+
+    return transfer_cents
+
+
 def apply_sinking_fund(
     policy: PolicyModel,
     balances: Dict[str, int],

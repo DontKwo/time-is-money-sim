@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 from lifesim.config import PolicyModel, AccountModel
-from lifesim.policies import apply_payday_skim, apply_debt_payoff, apply_roth_conversion_ladder
+from lifesim.policies import apply_payday_skim, apply_debt_payoff, apply_roth_conversion_ladder, apply_mega_backdoor_roth
 from lifesim.accounts import AccountManager
 from lifesim.ledger import Ledger
 from lifesim.payroll import PayrollState
@@ -165,3 +165,59 @@ def test_roth_conversion_ladder() -> None:
     # Seasoning bucket should only record the 5k transfer
     assert len(manager.roth_conversion_seasoning) == 2
     assert manager.roth_conversion_seasoning[1] == (current_date_2, 500000)
+
+def test_mega_backdoor_roth_rollover() -> None:
+    policy = PolicyModel(
+        name="Mega-Backdoor Rollover",
+        kind="mega_backdoor_roth",
+        after_tax_source_account="after_tax_401k",
+        roth_target_account="roth_ira",
+        annual_contribution_limit=46000.0,
+    )
+
+    accounts = {
+        "after_tax_401k": AccountModel(kind="traditional_401k", balance=15000.0),
+        "roth_ira": AccountModel(kind="roth_ira", balance=0.0),
+    }
+
+    manager = AccountManager(accounts, base_seed=42)
+    manager.balances = {"after_tax_401k": 1500000, "roth_ira": 0}
+
+    ledger = Ledger()
+    payroll_state = PayrollState(2026)
+    annual_contributions_ytd = {}
+
+    current_date = date(2026, 12, 1)
+
+    apply_mega_backdoor_roth(
+        policy,
+        manager.balances,
+        ledger,
+        current_date,
+        annual_contributions_ytd,
+    )
+
+    # Verify balance transfer (15k dollars = 1.5M cents)
+    assert manager.balances["after_tax_401k"] == 0
+    assert manager.balances["roth_ira"] == 1500000
+
+    # Verify taxable event does not happen
+    assert payroll_state.ytd_taxable_ordinary_cents == 0
+
+    # Test limit hit
+    manager.balances["after_tax_401k"] = 3500000 # 35k
+
+    current_date_2 = date(2026, 12, 15)
+    apply_mega_backdoor_roth(
+        policy,
+        manager.balances,
+        ledger,
+        current_date_2,
+        annual_contributions_ytd,
+    )
+
+    # 46k max - 15k used = 31k available
+    # 35k available in account. Should transfer 31k.
+    assert manager.balances["after_tax_401k"] == 400000
+    assert manager.balances["roth_ira"] == 4600000
+    assert annual_contributions_ytd["roth_ira"] == 4600000

@@ -367,7 +367,8 @@ class PolicyModel(BaseModel):
     kind: Literal[
         "shortfall_cover", "payday_skim", "emergency_fund_target",
         "excess_sweep", "debt_payoff", "portfolio_rebalance",
-        "retirement_drawdown", "sinking_fund", "roth_conversion_ladder"
+        "retirement_drawdown", "sinking_fund", "roth_conversion_ladder",
+        "mega_backdoor_roth"
     ]
     enabled: bool = True
     start: Optional[date] = None
@@ -405,6 +406,9 @@ class PolicyModel(BaseModel):
     pretax_gross_up_rate: float = 0.15
     target_flows: List[str] = Field(default_factory=list)
     lookahead_days: int = 365
+    after_tax_source_account: Optional[str] = None
+    roth_target_account: Optional[str] = None
+    annual_contribution_limit: Optional[float] = None
 
 
 class OneTimeChargeSpec(BaseModel):
@@ -648,6 +652,9 @@ class ScenarioModel(BaseModel):
                 check_account_name("policy", policy.name, allocation.overflow_to_account)
             check_account_name("policy", policy.name, policy.overflow_to_account)
             check_account_names("policy", policy.name, policy.withdrawal_order)
+            if policy.kind == "mega_backdoor_roth":
+                check_account_name("policy", policy.name, policy.after_tax_source_account)
+                check_account_name("policy", policy.name, policy.roth_target_account)
 
         if self.taxes is not None:
             check_account_name("taxes", "taxes", self.taxes.settlement_account)
