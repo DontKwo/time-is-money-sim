@@ -477,7 +477,11 @@ def step_7_expense_flows(
                 accounts_manager.declined_tx_count += 1
                 continue
 
-            balances[account_name] -= amount_cents
+            # Record withdrawal (handles HSA qualified medical exemptions and investment basis)
+            accounts_manager.record_withdrawal(
+                account_name, amount_cents, category=flow.category or "", tags=flow.tags
+            )
+
             day_expense_cents += amount_cents
             ledger.append(
                 current_date,

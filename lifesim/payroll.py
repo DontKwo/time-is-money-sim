@@ -277,6 +277,7 @@ def process_paycheck(
             )
 
     # 5. FICA and Income Tax Withholding
+    # HSA contributions explicitly reduce FICA taxable income and ordinary taxable income
     fica_wages_cents = max(0, gross_cents - pretax_med_cents - emp_hsa_cents)
     ss_wage_base = tax_config.ss_wage_base if tax_config else 176_100.0
     if macro_state:

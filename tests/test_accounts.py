@@ -1,5 +1,8 @@
+from lifesim.payroll import PayrollState, process_paycheck
+from lifesim.config import TaxConfigModel, PaycheckModel, ScheduleModel, HSASpec, WithholdingSpec
+from datetime import date
 import calendar
-from datetime import date, timedelta
+from datetime import timedelta
 import pytest
 from lifesim.config import AccountModel, CardAutopaySpec
 from lifesim.accounts import AccountManager
@@ -26,7 +29,8 @@ def test_monthly_hysa_interest_posting() -> None:
     ending_dollars = manager.balances["hysa"] / 100.0
     # $10,000 at 4.5% APY compounds to $10,450.00 +/- 0.02
     assert ending_dollars == pytest.approx(10_450.0, abs=0.02)
-    entries = [record for record in ledger.records if "Monthly Interest" in record["flow"]]
+    entries = [
+        record for record in ledger.records if "Monthly Interest" in record["flow"]]
     assert len(entries) == 12
 
 
@@ -59,7 +63,8 @@ def test_credit_card_grace_period_and_autopay() -> None:
             cashback_pct=0.02,
             statement_day=25,
             due_day=20,
-            autopay=CardAutopaySpec(enabled=True, mode="statement_balance", from_account="checking"),
+            autopay=CardAutopaySpec(
+                enabled=True, mode="statement_balance", from_account="checking"),
         ),
     }
     manager = AccountManager(accounts, base_seed=42)
@@ -136,11 +141,14 @@ def test_mortgage_pmi_auto_drop() -> None:
         manager.accrue_daily_liabilities(current_date)
         manager.process_loan_payment("house_loan", current_date, ledger)
 
-    pmi_records = [record for record in ledger.records if "PMI" in record["flow"]]
+    pmi_records = [
+        record for record in ledger.records if "PMI" in record["flow"]]
     # PMI should have fired in early months, but stopped once LTV <= 0.78
     assert len(pmi_records) > 0
     # Current debt is now below 78% of asset value
-    assert (-manager.balances["house_loan"]) / manager.asset_values_cents["house_loan"] <= 0.78
+    assert (-manager.balances["house_loan"]) / \
+        manager.asset_values_cents["house_loan"] <= 0.78
+
 
 def test_529_college_savings_plan() -> None:
     accounts = {
@@ -157,9 +165,9 @@ def test_529_college_savings_plan() -> None:
     ledger = Ledger()
 
     # Check deposit adds to contributions
-    manager.record_deposit("college_fund", 500_000) # $5,000 contribution
+    manager.record_deposit("college_fund", 500_000)  # $5,000 contribution
     assert manager.ytd_529_contributions_cents["college_fund"] == 500_000
-    assert manager.cost_bases["college_fund"] == 1_300_000 # 8,000 + 5,000
+    assert manager.cost_bases["college_fund"] == 1_300_000  # 8,000 + 5,000
 
     # Check tax-free investment growth
     sim_start = date(2026, 1, 1)
@@ -176,7 +184,8 @@ def test_529_college_savings_plan() -> None:
 
     # Check qualified withdrawal
     pre_withdrawal_balance = manager.balances["college_fund"]
-    manager.record_withdrawal("college_fund", pre_withdrawal_balance, category="education")
+    manager.record_withdrawal(
+        "college_fund", pre_withdrawal_balance, category="education")
     assert manager.ytd_realized_cap_gains_cents == 0
     assert manager.ytd_529_non_qualified_earnings_cents == 0
     assert manager.balances["college_fund"] == 0
@@ -204,7 +213,7 @@ def test_529_state_tax_deduction_limit() -> None:
         )
     }
     manager = AccountManager(accounts, base_seed=42)
-    manager.record_deposit("college_fund", 500_000) # Contribute $5,000
+    manager.record_deposit("college_fund", 500_000)  # Contribute $5,000
 
     from lifesim.config import InflationModel
 
@@ -229,3 +238,57 @@ def test_529_state_tax_deduction_limit() -> None:
     # Verify deduction is capped at 4,000 (400,000 cents)
     archived_tax_state = prior_tax_states[2026]
     assert archived_tax_state.ytd_state_529_deductible_cents == 400_000
+
+
+def test_hsa_contributions_reduce_taxes() -> None:
+    # Setup paycheck with HSA
+    paycheck = PaycheckModel(
+        name="job",
+        annual_salary=100000.0,
+        pay_periods_per_year=1,  # 1 for easy math
+        schedule=ScheduleModel(start=date(2026, 1, 1)),
+        withholding=WithholdingSpec(mode="none"),
+        hsa=HSASpec(
+            enabled=True,
+            annual_limit=4150.0,
+            employee_per_period=1000.0,  # employee contributes $1000
+            employer_per_period=500.0,  # employer contributes $500
+            to_account="hsa"
+        )
+    )
+
+    payroll_state = PayrollState(2026)
+    balances = {"hsa": 0, "checking": 0}
+    ledger = Ledger()
+    tax_config = TaxConfigModel()
+
+    process_paycheck(
+        paycheck=paycheck,
+        current_date=date(2026, 1, 1),
+        sim_start=date(2026, 1, 1),
+        payroll_state=payroll_state,
+        balances=balances,
+        ledger=ledger,
+        tax_config=tax_config
+    )
+
+    assert balances["hsa"] == 150000
+    # HSA reduces $100k gross to $99k taxable
+    assert payroll_state.ytd_taxable_ordinary_cents == 9900000
+    assert payroll_state.ytd_fica_wages_cents == 9900000
+
+
+def test_hsa_growth_is_tax_exempt() -> None:
+    accounts = {
+        "hsa": AccountModel(
+            kind="hsa",
+            balance=10000.0,
+            annual_growth_rate=0.05
+        )
+    }
+    manager = AccountManager(accounts, base_seed=42)
+    manager.balances["hsa"] = 1200000  # Grew by 2k
+    manager.cost_bases["hsa"] = 1000000
+
+    manager.record_withdrawal("hsa", 200000, category="medical")
+    assert manager.ytd_realized_cap_gains_cents == 0
