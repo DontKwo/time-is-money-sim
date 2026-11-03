@@ -122,7 +122,8 @@ def test_job_layoff_event_with_reversion_and_unvested_forfeiture() -> None:
     )
 
     # 1. Fire layoff on April 1
-    event_manager.process_daily_events(date(2026, 4, 1), date(2025, 1, 1), balances, ledger)
+    dummy_scenario = ScenarioModel(start=date(2025, 1, 1), days=365)
+    event_manager.process_daily_events(date(2026, 4, 1), date(2025, 1, 1), balances, ledger, dummy_scenario)
     assert paycheck.enabled == False
     assert unemployment_flow.enabled == True
     # 50% unvested ($5,000 = 500_000 cents) forfeited from 401k balance
@@ -331,3 +332,65 @@ def test_salt_cap_married_separate_and_joint() -> None:
 
     # Single gets $5k mortgage + $10k SALT = $15k deductions; Separate gets $5k mortgage + $5k SALT = $10k deductions
     assert separate_settlement_cents > single_settlement_cents
+
+def test_relocation_event_tax_and_expense_adjustments() -> None:
+    scenario = ScenarioModel(
+        start=date(2025, 1, 1),
+        end=date(2025, 1, 10),
+        accounts={"checking": AccountModel(kind="checking", balance=1000.0)},
+        taxes=TaxConfigModel(
+            enabled=True,
+            state_code="CA",
+            state_flat_rate=0.05,
+            federal_brackets=[],
+        ),
+        flows=[
+            FlowModel(
+                name="Rent",
+                type="expense",
+                amount=AmountModel(fixed=1000.0),
+                schedule=ScheduleModel(monthly=[1]),
+            ),
+            FlowModel(
+                name="Groceries",
+                type="expense",
+                amount=AmountModel(grocery_estimate={"people": 1, "cost_per_person_per_period": 300.0}),
+                schedule=ScheduleModel(monthly=[1]),
+            )
+        ],
+        events=[
+            EventModel(
+                name="Move to Texas",
+                date=date(2025, 1, 5),
+                relocation={"state_code": "TX", "state_flat_rate": 0.0, "living_cost_factor": 0.8}
+            )
+        ]
+    )
+
+    # Add paycheck to trigger taxes
+    scenario.paychecks = [
+        PaycheckModel(
+            name="Job",
+            annual_salary=120_000.0,
+            schedule=ScheduleModel(monthly=[1]),
+        )
+    ]
+    # Set to a full year for taxes to apply
+    scenario.end = date(2025, 12, 31)
+    scenario.taxes.april_true_up = True
+    scenario.taxes.settlement_account = "checking"
+
+    ledger = run(scenario)
+    assert scenario.taxes.state_code == "TX"
+    assert scenario.taxes.state_flat_rate == 0.0
+
+    # Check that flow amounts were reduced by 20%
+    rent_flow = next(f for f in scenario.flows if f.name == "Rent")
+    assert rent_flow.amount.fixed == 800.0
+
+    grocery_flow = next(f for f in scenario.flows if f.name == "Groceries")
+    assert grocery_flow.amount.grocery_estimate.cost_per_person_per_period == 240.0
+
+    df = ledger.to_df()
+    state_tax_rows = df[df["flow"] == "State Income Tax"]
+    assert all(amount == 0.0 for amount in state_tax_rows["amount"])

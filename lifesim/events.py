@@ -7,6 +7,7 @@ from .config import (
     FlowModel,
     PaycheckModel,
     AccountModel,
+    ScenarioModel,
 )
 from .rng import derive_rng
 from .amounts import get_amount
@@ -77,6 +78,7 @@ class EventManager:
         sim_start: date,
         balances: Dict[str, int],
         ledger: Any,
+        scenario: ScenarioModel,
     ) -> None:
         # 1. Scripted date events
         for event in self.events:
@@ -185,6 +187,48 @@ class EventManager:
                         computed_pi = self.accounts_manager._compute_scheduled_pi(new_acc_model, abs(init_cents))
                         self.accounts_manager.scheduled_pi_cents[new_acc_name] = computed_pi
                         self.accounts_manager.asset_values_cents[new_acc_name] = int(round(new_acc_model.asset_value * 100.0))
+
+            # Relocation
+            if event.relocation:
+                rel = event.relocation
+                if scenario.taxes is not None:
+                    scenario.taxes.state_code = rel.state_code
+                    if rel.state_flat_rate is not None:
+                        scenario.taxes.state_flat_rate = rel.state_flat_rate
+                    if rel.state_brackets is not None:
+                        scenario.taxes.state_brackets = rel.state_brackets
+
+                # Apply cost of living adjustment to all active expense flows
+                for flow in self.flows:
+                    if flow.type == "expense":
+                        amt_model = flow.amount
+                        if amt_model.fixed is not None:
+                            amt_model.fixed = round(amt_model.fixed * rel.living_cost_factor, 2)
+
+                        if amt_model.normal is not None and len(amt_model.normal) == 2:
+                            amt_model.normal = [
+                                round(amt_model.normal[0] * rel.living_cost_factor, 2),
+                                round(amt_model.normal[1] * rel.living_cost_factor, 2)
+                            ]
+
+                        if amt_model.uniform is not None and len(amt_model.uniform) == 2:
+                            amt_model.uniform = [
+                                round(amt_model.uniform[0] * rel.living_cost_factor, 2),
+                                round(amt_model.uniform[1] * rel.living_cost_factor, 2)
+                            ]
+
+                        if amt_model.lognormal_dollars is not None and len(amt_model.lognormal_dollars) == 2:
+                            amt_model.lognormal_dollars = [
+                                round(amt_model.lognormal_dollars[0] * rel.living_cost_factor, 2),
+                                amt_model.lognormal_dollars[1]
+                            ]
+
+                        if amt_model.gas_estimate is not None:
+                            amt_model.gas_estimate.cost_per_gallon = round(amt_model.gas_estimate.cost_per_gallon * rel.living_cost_factor, 2)
+
+                        if amt_model.grocery_estimate is not None:
+                            amt_model.grocery_estimate.cost_per_person_per_period = round(amt_model.grocery_estimate.cost_per_person_per_period * rel.living_cost_factor, 2)
+
 
             # Refinance loan
             if event.refinance_loan:

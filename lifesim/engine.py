@@ -66,7 +66,7 @@ def run(scenario: ScenarioModel) -> Ledger:
             day_index, current_date, current_tax_year, tax_state, payroll_state, accounts_manager,
             prior_year_tax_states, annual_contributions_ytd, macro_state
         )
-        step_2_events_and_shocks(event_manager, current_date, scenario.start, balances, ledger)
+        step_2_events_and_shocks(event_manager, current_date, scenario.start, balances, ledger, scenario)
         step_3_payroll_and_rsus(
             current_date, scenario, payroll_state, accounts_manager, balances, ledger, macro_state,
             paycheck_fire_counts, paycheck_rngs, policies, annual_contributions_ytd, base_seed

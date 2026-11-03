@@ -95,10 +95,11 @@ def step_2_events_and_shocks(
     start_date: date,
     balances: Dict[str, int],
     ledger: Ledger,
+    scenario: ScenarioModel,
 ) -> None:
     # Process event reversions and execute daily events
     event_manager.process_reversions(current_date)
-    event_manager.process_daily_events(current_date, start_date, balances, ledger)
+    event_manager.process_daily_events(current_date, start_date, balances, ledger, scenario)
 
 
 def step_3_payroll_and_rsus(

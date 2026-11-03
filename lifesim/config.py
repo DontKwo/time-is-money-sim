@@ -426,6 +426,18 @@ class RefinanceSpec(BaseModel):
     closing_cost_from_account: str = "checking"
 
 
+class TaxBracket(BaseModel):
+    rate: float
+    threshold: float  # floor of the bracket in dollars (0.0 for first bracket)
+
+
+class RelocationEventModel(BaseModel):
+    state_code: str
+    living_cost_factor: float
+    state_flat_rate: Optional[float] = None
+    state_brackets: Optional[List[TaxBracket]] = None
+
+
 class EventModel(BaseModel):
     name: str
     enabled: bool = True
@@ -440,6 +452,7 @@ class EventModel(BaseModel):
     one_time_flow: Optional[OneTimeChargeSpec] = None
     open_account: Dict[str, AccountModel] = Field(default_factory=dict)
     refinance_loan: Optional[RefinanceSpec] = None
+    relocation: Optional[RelocationEventModel] = None
     start: Optional[dt.date] = None
     end: Optional[dt.date] = None
     poisson_per_year: Optional[float] = None
@@ -500,11 +513,6 @@ class FlowModel(BaseModel):
     employer_match_cap_per_event: Optional[float] = None
 
 
-class TaxBracket(BaseModel):
-    rate: float
-    threshold: float  # floor of the bracket in dollars (0.0 for first bracket)
-
-
 def default_single_federal_brackets() -> List[TaxBracket]:
     return [
         TaxBracket(rate=0.10, threshold=0.0),
@@ -527,6 +535,7 @@ def default_single_ltcg_brackets() -> List[TaxBracket]:
 
 class TaxConfigModel(BaseModel):
     enabled: bool = False
+    state_code: Optional[str] = None
     filing_status: Literal["single", "married_joint", "married_separate", "head_of_household"] = "single"
     standard_deduction: Optional[float] = None
     salt_cap: Optional[float] = None
