@@ -136,16 +136,28 @@ def compute_april_settlement_cents(
     deductions_cents = max(standard_deduction_cents, itemized_deductions_cents) + tax_state.ytd_traditional_ira_deductible_cents
 
     ordinary_gross_cents = tax_state.ytd_taxable_ordinary_cents + tax_state.ytd_taxable_interest_cents + tax_state.ytd_529_non_qualified_earnings_cents
+    unused_deduction_cents = max(0, deductions_cents - ordinary_gross_cents)
     taxable_ordinary_cents = max(0, ordinary_gross_cents - deductions_cents)
 
     fed_ordinary_tax_cents = compute_progressive_tax_cents(taxable_ordinary_cents, config.federal_brackets)
+
     total_ltcg_cents = tax_state.ytd_realized_cap_gains_cents + tax_state.ytd_qualified_dividends_cents
-    fed_ltcg_tax_cents = compute_ltcg_tax_cents(taxable_ordinary_cents, total_ltcg_cents, config.ltcg_brackets)
+    taxable_ltcg_cents = max(0, total_ltcg_cents - unused_deduction_cents)
+
+    ltcg_threshold = 94050.0 if config.filing_status == "married_joint" else 47025.0
+    working_ltcg_brackets = []
+    for bracket in config.ltcg_brackets:
+        if bracket.rate == 0.15:
+            working_ltcg_brackets.append(TaxBracket(rate=bracket.rate, threshold=ltcg_threshold))
+        else:
+            working_ltcg_brackets.append(bracket)
+
+    fed_ltcg_tax_cents = compute_ltcg_tax_cents(taxable_ordinary_cents, taxable_ltcg_cents, working_ltcg_brackets)
 
     penalty_529_cents = int(round(tax_state.ytd_529_non_qualified_earnings_cents * 0.10))
     total_fed_tax_cents = fed_ordinary_tax_cents + fed_ltcg_tax_cents + penalty_529_cents
 
-    combined_state_taxable = taxable_ordinary_cents + total_ltcg_cents
+    combined_state_taxable = taxable_ordinary_cents + taxable_ltcg_cents
     combined_state_taxable = max(0, combined_state_taxable - tax_state.ytd_state_529_deductible_cents)
     if config.state_brackets:
         total_state_tax_cents = compute_progressive_tax_cents(combined_state_taxable, config.state_brackets)

@@ -331,3 +331,60 @@ def test_salt_cap_married_separate_and_joint() -> None:
 
     # Single gets $5k mortgage + $10k SALT = $15k deductions; Separate gets $5k mortgage + $5k SALT = $10k deductions
     assert separate_settlement_cents > single_settlement_cents
+
+
+
+def test_ltcg_unused_standard_deduction() -> None:
+    # Verify unused deduction reduces LTCG and correctly applies brackets.
+    config = TaxConfigModel(
+        enabled=True,
+        filing_status="single",
+        standard_deduction=15000.0,
+        state_flat_rate=0.0,
+        federal_brackets=[TaxBracket(rate=0.0, threshold=0.0)],
+        ltcg_brackets=[
+            TaxBracket(rate=0.0, threshold=0.0),
+            TaxBracket(rate=0.15, threshold=47025.0), # The engine will override this to 47025 but being explicit here
+            TaxBracket(rate=0.20, threshold=518900.0)
+        ]
+    )
+    tax_state = YearTaxAccumulator(2026)
+    tax_state.ytd_taxable_ordinary_cents = 5_000 * 100
+    tax_state.ytd_realized_cap_gains_cents = 60_000 * 100
+
+    tax = compute_april_settlement_cents(tax_state, config)
+    assert tax == 44625
+
+
+def test_ltcg_ordinary_income_stacks_capital_gains() -> None:
+    # Verify ordinary income fills lower brackets before stacking capital gains.
+    config = TaxConfigModel(
+        enabled=True,
+        filing_status="single",
+        standard_deduction=0.0,
+        state_flat_rate=0.0,
+        federal_brackets=[TaxBracket(rate=0.0, threshold=0.0)],
+    )
+    tax_state = YearTaxAccumulator(2026)
+    tax_state.ytd_taxable_ordinary_cents = 40_000 * 100
+    tax_state.ytd_realized_cap_gains_cents = 20_000 * 100
+
+    tax = compute_april_settlement_cents(tax_state, config)
+    assert tax == 194625
+
+
+def test_ltcg_married_joint_threshold() -> None:
+    # Verify 0% capital gains rate up to MFJ threshold ($94,050).
+    config = TaxConfigModel(
+        enabled=True,
+        filing_status="married_joint",
+        standard_deduction=30000.0,
+        state_flat_rate=0.0,
+        federal_brackets=[TaxBracket(rate=0.0, threshold=0.0)],
+    )
+    tax_state = YearTaxAccumulator(2026)
+    tax_state.ytd_taxable_ordinary_cents = 20_000 * 100
+    tax_state.ytd_realized_cap_gains_cents = 120_000 * 100
+
+    tax = compute_april_settlement_cents(tax_state, config)
+    assert tax == 239250
