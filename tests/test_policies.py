@@ -1,8 +1,10 @@
 from datetime import date, timedelta
 from lifesim.config import PolicyModel, AccountModel
-from lifesim.policies import apply_payday_skim, apply_debt_payoff, apply_roth_conversion_ladder
+from lifesim.policies import apply_payday_skim, apply_debt_payoff, apply_roth_conversion_ladder, apply_tax_loss_harvesting
 from lifesim.accounts import AccountManager
 from lifesim.ledger import Ledger
+from lifesim.taxes import YearTaxAccumulator, compute_april_settlement_cents
+from lifesim.config import TaxConfigModel, TaxBracket
 from lifesim.payroll import PayrollState
 
 
@@ -165,3 +167,49 @@ def test_roth_conversion_ladder() -> None:
     # Seasoning bucket should only record the 5k transfer
     assert len(manager.roth_conversion_seasoning) == 2
     assert manager.roth_conversion_seasoning[1] == (current_date_2, 500000)
+
+
+def test_tax_loss_harvesting_and_carryforward() -> None:
+    policy = PolicyModel(
+        name="TLH",
+        kind="tax_loss_harvesting",
+        target_accounts=["brokerage"]
+    )
+
+    accounts = {
+        "brokerage": AccountModel(kind="investment", balance=15000.0)
+    }
+
+    manager = AccountManager(accounts, base_seed=42)
+    manager.balances = {"brokerage": 10_000_000} # Current balance is $100k
+    manager.cost_bases = {"brokerage": 15_000_000} # Cost basis is $150k (Loss of $50k)
+
+    ledger = Ledger()
+    current_date = date(2026, 12, 1)
+
+    # 1. Harvest the loss
+    harvested = apply_tax_loss_harvesting(policy, manager.balances, ledger, current_date, manager)
+
+    # Should have harvested the full $50k loss (5_000_000 cents)
+    assert harvested == 5_000_000
+    assert manager.ytd_realized_cap_losses_cents == 5_000_000
+    assert manager.balances["brokerage"] == 10_000_000
+    assert manager.cost_bases["brokerage"] == 10_000_000 # Cost basis resets to current balance
+
+    # 2. Simulate tax settlement to test $3,000 deduction limit and carryforward
+    tax_state = YearTaxAccumulator(2026)
+    tax_state.ytd_realized_cap_losses_cents = manager.ytd_realized_cap_losses_cents
+    tax_state.ytd_taxable_ordinary_cents = 100_000_000 # $100k ordinary income
+
+    tax_config = TaxConfigModel(
+        enabled=True,
+        filing_status="single",
+        standard_deduction=0.0, # Zero to simplify math
+        federal_brackets=[TaxBracket(rate=0.10, threshold=0.0)],
+        state_brackets=[]
+    )
+
+    compute_april_settlement_cents(tax_state, tax_config)
+
+    # Out of $50k loss, $3k should be deducted, $47k carried forward
+    assert tax_state.carryforward_cap_losses_cents == 4_700_000

@@ -369,7 +369,8 @@ class PolicyModel(BaseModel):
     kind: Literal[
         "shortfall_cover", "payday_skim", "emergency_fund_target",
         "excess_sweep", "debt_payoff", "portfolio_rebalance",
-        "retirement_drawdown", "sinking_fund", "roth_conversion_ladder"
+        "retirement_drawdown", "sinking_fund", "roth_conversion_ladder",
+        "tax_loss_harvesting"
     ]
     enabled: bool = True
     start: Optional[date] = None

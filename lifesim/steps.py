@@ -30,6 +30,7 @@ from .policies import (
     apply_retirement_drawdown,
     apply_roth_conversion_ladder,
     apply_sinking_fund,
+    apply_tax_loss_harvesting,
 )
 from .events import EventManager
 from .goals import GoalTracker
@@ -56,6 +57,7 @@ def step_1_macro_rollover(
         tax_state.ytd_taxable_interest_cents = accounts_manager.ytd_taxable_interest_cents
         tax_state.ytd_qualified_dividends_cents = accounts_manager.ytd_qualified_dividends_cents
         tax_state.ytd_realized_cap_gains_cents = accounts_manager.ytd_realized_cap_gains_cents
+        tax_state.ytd_realized_cap_losses_cents = accounts_manager.ytd_realized_cap_losses_cents
         tax_state.ytd_mortgage_interest_cents = accounts_manager.ytd_mortgage_interest_cents
         tax_state.ytd_property_tax_cents = accounts_manager.ytd_property_tax_cents
         tax_state.ytd_fed_withheld_cents = payroll_state.ytd_fed_withheld_cents
@@ -74,11 +76,14 @@ def step_1_macro_rollover(
         prior_year_tax_states[current_tax_year] = tax_state
 
         current_tax_year = current_date.year
-        tax_state = YearTaxAccumulator(current_tax_year)
+        new_tax_state = YearTaxAccumulator(current_tax_year)
+        new_tax_state.carryforward_cap_losses_cents = tax_state.carryforward_cap_losses_cents
+        tax_state = new_tax_state
         payroll_state.reset_year(current_tax_year)
         accounts_manager.ytd_taxable_interest_cents = 0
         accounts_manager.ytd_qualified_dividends_cents = 0
         accounts_manager.ytd_realized_cap_gains_cents = 0
+        accounts_manager.ytd_realized_cap_losses_cents = 0
         accounts_manager.ytd_mortgage_interest_cents = 0
         accounts_manager.ytd_property_tax_cents = 0
         accounts_manager.ytd_529_contributions_cents.clear()
@@ -297,6 +302,7 @@ def step_5_tax_settlement(
     scenario: ScenarioModel,
     macro_state: MacroState,
     prior_year_tax_states: Dict[int, YearTaxAccumulator],
+    current_tax_state: YearTaxAccumulator,
     default_account: str,
     balances: Dict[str, int],
     ledger: Ledger,
@@ -312,6 +318,7 @@ def step_5_tax_settlement(
                 settlement_cents = compute_april_settlement_cents(
                     prior_state, scenario.taxes, macro_state.inflation_index
                 )
+                current_tax_state.carryforward_cap_losses_cents = prior_state.carryforward_cap_losses_cents
                 settlement_account = scenario.taxes.settlement_account or default_account
                 if settlement_cents > 0:
                     balances[settlement_account] -= settlement_cents
@@ -763,6 +770,14 @@ def step_10_policies(
                 ledger,
                 current_date,
                 scenario.flows,
+            )
+        elif policy.kind == "tax_loss_harvesting":
+            apply_tax_loss_harvesting(
+                policy,
+                balances,
+                ledger,
+                current_date,
+                accounts_manager,
             )
 
 

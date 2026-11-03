@@ -488,3 +488,28 @@ def apply_sinking_fund(
     ledger.append(current_date, f"{policy.name} to {to_account}", transfer_cents, to_account, balances[to_account])
     ledger.append(current_date, f"{policy.name} to {to_account}", -transfer_cents, from_account, balances[from_account])
     return transfer_cents
+
+
+def apply_tax_loss_harvesting(
+    policy: PolicyModel,
+    balances: Dict[str, int],
+    ledger: Any,
+    current_date: date,
+    accounts_manager: Any,
+) -> int:
+    harvested_total = 0
+    for acc in policy.target_accounts:
+        current_balance = balances.get(acc, 0)
+        current_basis = accounts_manager.cost_bases.get(acc, 0)
+
+        # Check if the account has unrealized losses
+        if current_basis > current_balance and current_balance > 0:
+            accounts_manager.record_withdrawal(acc, current_balance)
+            accounts_manager.record_deposit(acc, current_balance)
+
+            ledger.append(current_date, f"{policy.name} (Sell) from {acc}", -current_balance, acc, balances[acc], tx_kind="transfer")
+            ledger.append(current_date, f"{policy.name} (Buy) to {acc}", current_balance, acc, balances[acc], tx_kind="transfer")
+
+            harvested_total += (current_basis - current_balance)
+
+    return harvested_total

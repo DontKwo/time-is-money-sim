@@ -11,6 +11,8 @@ class YearTaxAccumulator:
         self.ytd_taxable_interest_cents: int = 0
         self.ytd_qualified_dividends_cents: int = 0
         self.ytd_realized_cap_gains_cents: int = 0
+        self.ytd_realized_cap_losses_cents: int = 0
+        self.carryforward_cap_losses_cents: int = 0
         self.ytd_traditional_ira_deductible_cents: int = 0
         self.ytd_mortgage_interest_cents: int = 0
         self.ytd_property_tax_cents: int = 0
@@ -138,8 +140,20 @@ def compute_april_settlement_cents(
     ordinary_gross_cents = tax_state.ytd_taxable_ordinary_cents + tax_state.ytd_taxable_interest_cents + tax_state.ytd_529_non_qualified_earnings_cents
     taxable_ordinary_cents = max(0, ordinary_gross_cents - deductions_cents)
 
+    net_cap_gains_cents = tax_state.ytd_realized_cap_gains_cents - tax_state.ytd_realized_cap_losses_cents - tax_state.carryforward_cap_losses_cents
+
+    total_ltcg_cents = 0
+    if net_cap_gains_cents < 0:
+        deductible_loss_cents = min(300_000, -net_cap_gains_cents)
+        taxable_ordinary_cents = max(0, taxable_ordinary_cents - deductible_loss_cents)
+        tax_state.carryforward_cap_losses_cents = -net_cap_gains_cents - deductible_loss_cents
+    else:
+        tax_state.carryforward_cap_losses_cents = 0
+        total_ltcg_cents = net_cap_gains_cents
+
+    total_ltcg_cents += tax_state.ytd_qualified_dividends_cents
+
     fed_ordinary_tax_cents = compute_progressive_tax_cents(taxable_ordinary_cents, config.federal_brackets)
-    total_ltcg_cents = tax_state.ytd_realized_cap_gains_cents + tax_state.ytd_qualified_dividends_cents
     fed_ltcg_tax_cents = compute_ltcg_tax_cents(taxable_ordinary_cents, total_ltcg_cents, config.ltcg_brackets)
 
     penalty_529_cents = int(round(tax_state.ytd_529_non_qualified_earnings_cents * 0.10))

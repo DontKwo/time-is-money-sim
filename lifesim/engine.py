@@ -76,7 +76,7 @@ def run(scenario: ScenarioModel) -> Ledger:
             flow_rngs, last_executed_flow_cents, default_account, policies, annual_contributions_ytd, payroll_state
         )
         step_5_tax_settlement(
-            current_date, scenario, macro_state, prior_year_tax_states, default_account, balances, ledger
+            current_date, scenario, macro_state, prior_year_tax_states, tax_state, default_account, balances, ledger
         )
         step_6_loan_payments(current_date, scenario, accounts_manager, default_account, policies, balances, ledger)
         day_expense = step_7_expense_flows(

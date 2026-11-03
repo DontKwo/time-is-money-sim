@@ -48,6 +48,7 @@ class AccountManager:
         self.ytd_taxable_interest_cents: int = 0
         self.ytd_qualified_dividends_cents: int = 0
         self.ytd_realized_cap_gains_cents: int = 0
+        self.ytd_realized_cap_losses_cents: int = 0
         self.ytd_529_contributions_cents: Dict[str, int] = {}
         self.ytd_529_non_qualified_earnings_cents: int = 0
 
@@ -143,7 +144,10 @@ class AccountManager:
                     if not is_qualified and realized_gain > 0:
                         self.ytd_529_non_qualified_earnings_cents += realized_gain
                 else:
-                    self.ytd_realized_cap_gains_cents += realized_gain
+                    if realized_gain > 0:
+                        self.ytd_realized_cap_gains_cents += realized_gain
+                    elif realized_gain < 0:
+                        self.ytd_realized_cap_losses_cents += abs(realized_gain)
         self.balances[account_name] = self.balances.get(account_name, 0) - amount_cents
 
     def charge_credit_card(self, card_name: str, amount_cents: int, category: Optional[str] = None) -> bool:
