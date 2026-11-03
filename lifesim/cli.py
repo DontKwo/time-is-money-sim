@@ -22,11 +22,12 @@ from lifesim.montecarlo import run_monte_carlo
 from lifesim.compare import compare_scenarios, run_sensitivity_analysis
 from lifesim.db import export_to_sqlite
 from lifesim.report import generate_html_report
+from lifesim.batch import run_batch, format_batch_summary
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Life Money Simulator")
-    parser.add_argument("scenario", type=str, help="Path to scenario YAML file")
+    parser.add_argument("scenario", type=str, nargs="?", default=None, help="Path to scenario YAML file (optional if --batch is used)")
     parser.add_argument("--out-ledger", type=str, default="ledger.csv", help="Output ledger CSV path")
     parser.add_argument("--out-plot", type=str, default="balances.png", help="Output plot PNG path")
     parser.add_argument(
@@ -56,9 +57,39 @@ def main() -> None:
     parser.add_argument("--out-html", type=str, default=None, help="Output interactive HTML report path")
     parser.add_argument("--out-jsonl", type=str, default=None, help="Output ledger JSON-Lines path")
     parser.add_argument("--real-dollars", action="store_true", help="Deflate output metrics and charts into constant purchasing power dollars")
+    parser.add_argument("--batch", type=str, default=None, help="Run multiple scenarios matching a glob pattern")
+    parser.add_argument("--out-batch-csv", type=str, default=None, help="Export batch results to CSV path")
 
     args = parser.parse_args()
 
+
+    if args.batch is not None:
+        import glob
+
+        # Match glob pattern or directory
+        batch_path = Path(args.batch)
+        if batch_path.is_dir():
+            pattern = str(batch_path / "*.yaml")
+        else:
+            pattern = args.batch
+
+        scenario_paths = glob.glob(pattern)
+        if not scenario_paths:
+            print(f"Error: No scenarios found matching {args.batch}")
+            sys.exit(1)
+
+        print(f"Running batch simulation for {len(scenario_paths)} scenarios...")
+        df_batch = run_batch(scenario_paths)
+        print(format_batch_summary(df_batch))
+
+        if args.out_batch_csv:
+            df_batch.to_csv(args.out_batch_csv, index=False)
+            print(f"Exported batch results to {args.out_batch_csv}")
+
+        sys.exit(0)
+
+    if args.scenario is None:
+        parser.error("scenario is required unless --batch is provided")
     # Handle scenario validation mode
     if args.validate:
         scenario_file_path = Path(args.scenario)
