@@ -439,3 +439,65 @@ flows:
             assert "date" in daily_data
             assert "total_net_worth" in daily_data
             assert "checking" in daily_data
+
+import pandas as pd
+
+def test_cli_batch_runner(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    scenario_1 = tmp_path / "scenario_1.yaml"
+    scenario_1.write_text("""
+start: 2026-01-01
+days: 30
+accounts:
+  checking: {balance: 1000}
+flows:
+  - name: Salary
+    type: income
+    to: checking
+    schedule: {monthly: 1}
+    amount: {fixed: 1000}
+""")
+
+    scenario_2 = tmp_path / "scenario_2.yaml"
+    scenario_2.write_text("""
+start: 2026-01-01
+days: 30
+accounts:
+  checking: {balance: 2000}
+flows:
+  - name: Salary
+    type: income
+    to: checking
+    schedule: {monthly: 1}
+    amount: {fixed: 2000}
+""")
+
+    out_csv = tmp_path / "batch_out.csv"
+
+    test_args = [
+        "lifesim",
+        "--batch", f"{tmp_path}/*.yaml",
+        "--out-batch-csv", str(out_csv),
+    ]
+    with patch.object(sys, "argv", test_args):
+        with pytest.raises(SystemExit) as exit_info:
+            main()
+
+    assert exit_info.value.code == 0
+
+    # Check outputs
+    captured = capsys.readouterr()
+    assert "Running batch simulation" in captured.out
+    assert "Scenario" in captured.out
+    assert "Total Net Worth" in captured.out
+    assert str(out_csv) in captured.out
+
+    # Check CSV existence and content
+    assert out_csv.exists()
+    df = pd.read_csv(out_csv)
+    assert len(df) == 2
+    assert "Total Net Worth" in df.columns
+    assert "Scenario" in df.columns
+
+    names = df["Scenario"].tolist()
+    assert "scenario_1.yaml" in names
+    assert "scenario_2.yaml" in names
