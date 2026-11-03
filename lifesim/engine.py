@@ -64,7 +64,7 @@ def run(scenario: ScenarioModel) -> Ledger:
         current_date = scenario.start + timedelta(days=day_index)
         current_tax_year, tax_state = step_1_macro_rollover(
             day_index, current_date, current_tax_year, tax_state, payroll_state, accounts_manager,
-            prior_year_tax_states, annual_contributions_ytd, macro_state
+            prior_year_tax_states, annual_contributions_ytd, macro_state, ledger
         )
         step_2_events_and_shocks(event_manager, current_date, scenario.start, balances, ledger)
         step_3_payroll_and_rsus(

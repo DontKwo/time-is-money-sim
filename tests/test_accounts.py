@@ -232,7 +232,7 @@ def test_529_state_tax_deduction_limit() -> None:
         accounts_manager=manager,
         prior_year_tax_states=prior_tax_states,
         annual_contributions_ytd={"college_fund": 500_000},
-        macro_state=macro_state
+        macro_state=macro_state, ledger=Ledger()
     )
 
     # Verify deduction is capped at 4,000 (400,000 cents)
@@ -292,3 +292,101 @@ def test_hsa_growth_is_tax_exempt() -> None:
 
     manager.record_withdrawal("hsa", 200000, category="medical")
     assert manager.ytd_realized_cap_gains_cents == 0
+
+def test_fsa_contributions_and_taxes() -> None:
+    from lifesim.config import FSASpec, TaxBracket
+
+    paycheck = PaycheckModel(
+        name="JobWithFSA",
+        enabled=True,
+        schedule=ScheduleModel(
+            weekly="friday",
+            start=date(2026, 1, 1)
+        ),
+        gross_per_period=None,
+        annual_salary=52_000.0,
+        pay_periods_per_year=52,
+        fsa=FSASpec(enabled=True, to_account="my_fsa", annual_contribution=3200.0),
+        withholding=WithholdingSpec(
+            mode="brackets",
+            include_fica=True
+        )
+    )
+
+    tax_config = TaxConfigModel(
+        enabled=True,
+        standard_deduction=15_000.0,
+        federal_brackets=[
+            TaxBracket(rate=0.10, threshold=0.0),
+        ]
+    )
+
+    from lifesim.payroll import PayrollState, process_paycheck
+    from lifesim.macro import MacroState
+    from lifesim.config import InflationModel
+
+    payroll_state = PayrollState(2026)
+    balances = {"my_fsa": 0, "checking": 0}
+    ledger = Ledger()
+    macro_state = MacroState(InflationModel(), date(2026, 1, 1))
+
+    current_date = date(2026, 1, 2)
+    process_paycheck(
+        paycheck, current_date, date(2026, 1, 1), payroll_state, balances, ledger, tax_config, macro_state
+    )
+
+    # 52,000 / 52 = 1,000 gross per period
+    # 3,200 / 52 = 61.53... rounds to 62
+    expected_fsa = 6154
+    assert balances["my_fsa"] == expected_fsa
+    assert payroll_state.ytd_fsa_cents == expected_fsa
+
+    fica_wages = 100_000 - expected_fsa
+    assert payroll_state.ytd_fica_wages_cents == fica_wages
+    assert payroll_state.ytd_taxable_ordinary_cents == fica_wages
+    assert payroll_state.ytd_fed_withheld_cents == int(round((fica_wages * 52 - 1500000) * 0.1 / 52))
+
+def test_fsa_year_end_forfeiture() -> None:
+    from lifesim.steps import step_1_macro_rollover
+    from lifesim.macro import MacroState
+    from lifesim.payroll import PayrollState
+    from lifesim.taxes import YearTaxAccumulator
+    from lifesim.config import InflationModel
+
+    accounts = {
+        "fsa_forfeit": AccountModel(
+            kind="fsa",
+            balance=1000.0,
+        ),
+        "fsa_keep": AccountModel(
+            kind="fsa",
+            balance=500.0,
+        )
+    }
+    manager = AccountManager(accounts, base_seed=42)
+
+
+
+    tax_state = YearTaxAccumulator(2026)
+    payroll_state = PayrollState(2026)
+    macro_state = MacroState(InflationModel(), date(2026, 1, 1))
+    prior_tax_states = {}
+    ledger = Ledger()
+
+    step_1_macro_rollover(
+        day_index=366,
+        current_date=date(2027, 1, 1),
+        current_tax_year=2026,
+        tax_state=tax_state,
+        payroll_state=payroll_state,
+        accounts_manager=manager,
+        prior_year_tax_states=prior_tax_states,
+        annual_contributions_ytd={},
+        macro_state=macro_state,
+        ledger=ledger
+    )
+
+    # fsa_forfeit was 1000.0, over 640 rollover limit, should be 640.0
+    assert manager.balances["fsa_forfeit"] == 64000
+    # fsa_keep was 500.0, under 640 rollover limit, should be 500.0
+    assert manager.balances["fsa_keep"] == 50000

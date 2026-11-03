@@ -47,6 +47,7 @@ def step_1_macro_rollover(
     prior_year_tax_states: Dict[int, YearTaxAccumulator],
     annual_contributions_ytd: Dict[str, int],
     macro_state: MacroState,
+    ledger: Ledger,
 ) -> Tuple[int, YearTaxAccumulator]:
     # Archive prior year tax state and reset accumulators on Jan 1
     if day_index > 0 and current_date.month == 1 and current_date.day == 1:
@@ -62,6 +63,15 @@ def step_1_macro_rollover(
         tax_state.ytd_state_withheld_cents = payroll_state.ytd_state_withheld_cents
         tax_state.ytd_fica_withheld_cents = payroll_state.ytd_fica_withheld_cents
         tax_state.ytd_529_non_qualified_earnings_cents = accounts_manager.ytd_529_non_qualified_earnings_cents
+
+        # FSA Year-End Forfeiture: unspent funds over $640 are forfeited
+        for acc_name, config in accounts_manager.configs.items():
+            if config.kind == "fsa":
+                current_bal = accounts_manager.balances.get(acc_name, 0)
+                if current_bal > 64000:
+                    forfeited_cents = current_bal - 64000
+                    accounts_manager.balances[acc_name] = 64000
+                    ledger.append(current_date, f"FSA Year-End Forfeiture", -forfeited_cents, acc_name, accounts_manager.balances[acc_name])
 
         ytd_state_529_deductible = 0
         for acc_name, contrib in accounts_manager.ytd_529_contributions_cents.items():
