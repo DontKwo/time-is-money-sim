@@ -143,3 +143,31 @@ def category_summary_df(ledger: "Ledger") -> pd.DataFrame:
 
     return pd.DataFrame(result).sort_values("total", ascending=False)
 
+
+def calc_expense_pareto(ledger: "Ledger") -> list[dict[str, Any]]:
+    tx_df = ledger.to_df()
+    if tx_df.empty:
+        return []
+
+    expenses = tx_df[(tx_df["tx_kind"] != "transfer") & (tx_df["amount"] < 0)].copy()
+    if expenses.empty:
+        return []
+
+    total_expense = abs(float(expenses["amount"].sum()))
+    if total_expense == 0:
+        return []
+
+    category_totals = expenses.groupby("category")["amount"].sum().abs()
+    cat_df = category_totals.reset_index().sort_values("amount", ascending=False)
+    cat_df["cumulative"] = cat_df["amount"].cumsum()
+    cat_df["cumulative_pct"] = cat_df["cumulative"] / total_expense
+
+    result = []
+    for _, row in cat_df.iterrows():
+        result.append({
+            "category": row["category"],
+            "total": round(float(row["amount"]), 2),
+            "cumulative_pct": round(float(row["cumulative_pct"]), 4)
+        })
+
+    return result

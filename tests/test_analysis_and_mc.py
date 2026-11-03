@@ -5,7 +5,8 @@ from lifesim.config import ScenarioModel
 from lifesim.engine import run
 from lifesim.montecarlo import run_monte_carlo
 from lifesim.compare import compare_scenarios, run_sensitivity_analysis
-from lifesim.analysis import monthly_rollup_df, category_summary_df
+from lifesim.analysis import monthly_rollup_df, category_summary_df, calc_expense_pareto
+from lifesim.ledger import Ledger
 
 
 def test_monte_carlo_monotonic_and_deterministic() -> None:
@@ -200,3 +201,30 @@ def test_real_dollars_deflation() -> None:
     assert nominal_end_nw == 10000.0
     assert real_end_nw < nominal_end_nw
     assert abs(real_end_nw - (10000.0 / ((1.10) ** (3.0)))) < 100.0
+
+
+def test_calc_expense_pareto() -> None:
+    ledger = Ledger()
+    # 50000 cents = $500, 20000 cents = $200, 10000 cents = $100
+    ledger.append(date(2026, 1, 1), "Groceries", -50000, "checking", 0, "food")
+    ledger.append(date(2026, 1, 1), "Gas", -20000, "checking", 0, "transport")
+    ledger.append(date(2026, 1, 1), "Coffee", -10000, "checking", 0, "coffee")
+
+    # Also add some income and transfer to make sure they are ignored
+    ledger.append(date(2026, 1, 1), "Salary", 100000, "checking", 0, "income", tx_kind="flow")
+    ledger.append(date(2026, 1, 1), "Transfer", -10000, "checking", 0, "transfer", tx_kind="transfer")
+
+    pareto = calc_expense_pareto(ledger)
+    assert len(pareto) == 3
+
+    assert pareto[0]["category"] == "food"
+    assert pareto[0]["total"] == 500.0
+    assert pareto[0]["cumulative_pct"] == 0.625  # 500 / 800
+
+    assert pareto[1]["category"] == "transport"
+    assert pareto[1]["total"] == 200.0
+    assert pareto[1]["cumulative_pct"] == 0.875  # 700 / 800
+
+    assert pareto[2]["category"] == "coffee"
+    assert pareto[2]["total"] == 100.0
+    assert pareto[2]["cumulative_pct"] == 1.0    # 800 / 800
