@@ -488,3 +488,19 @@ def apply_sinking_fund(
     ledger.append(current_date, f"{policy.name} to {to_account}", transfer_cents, to_account, balances[to_account])
     ledger.append(current_date, f"{policy.name} to {to_account}", -transfer_cents, from_account, balances[from_account])
     return transfer_cents
+
+def apply_guyton_klinkers_guardrails(
+    portfolio_value_cents: int, base_withdrawal_cents: int, initial_rate: float
+) -> int:
+    if portfolio_value_cents <= 0:
+        return base_withdrawal_cents
+
+    current_rate = base_withdrawal_cents / portfolio_value_cents
+
+    if current_rate > initial_rate * 1.2:
+        return int(round(base_withdrawal_cents * 0.9))
+
+    if current_rate < initial_rate * 0.8:
+        return int(round(base_withdrawal_cents * 1.1))
+
+    return base_withdrawal_cents

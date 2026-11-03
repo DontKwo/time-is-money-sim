@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 from lifesim.config import PolicyModel, AccountModel
-from lifesim.policies import apply_payday_skim, apply_debt_payoff, apply_roth_conversion_ladder
+from lifesim.policies import apply_payday_skim, apply_debt_payoff, apply_roth_conversion_ladder, apply_guyton_klinkers_guardrails
 from lifesim.accounts import AccountManager
 from lifesim.ledger import Ledger
 from lifesim.payroll import PayrollState
@@ -165,3 +165,29 @@ def test_roth_conversion_ladder() -> None:
     # Seasoning bucket should only record the 5k transfer
     assert len(manager.roth_conversion_seasoning) == 2
     assert manager.roth_conversion_seasoning[1] == (current_date_2, 500000)
+
+
+def test_guyton_klinkers_guardrails() -> None:
+    # Initial rate is 4%. Base withdrawal is 40,000 (4,000,000 cents).
+    initial_rate = 0.04
+    base_withdrawal_cents = 4_000_000
+
+    # 1. No adjustment if rate is exactly initial_rate
+    # Portfolio = 1,000,000 (100,000,000 cents)
+    portfolio_val = 100_000_000
+    assert apply_guyton_klinkers_guardrails(portfolio_val, base_withdrawal_cents, initial_rate) == base_withdrawal_cents
+
+    # 2. Capital preservation: rate > 120% of initial (i.e. > 0.048)
+    # Portfolio = 800,000 (80,000,000 cents) -> rate = 4m/80m = 0.05
+    portfolio_preservation = 80_000_000
+    expected_cut = int(round(base_withdrawal_cents * 0.9))
+    assert apply_guyton_klinkers_guardrails(portfolio_preservation, base_withdrawal_cents, initial_rate) == expected_cut
+
+    # 3. Prosperity rule: rate < 80% of initial (i.e. < 0.032)
+    # Portfolio = 1,300,000 (130,000,000 cents) -> rate = 4m/130m = 0.0307...
+    portfolio_prosperity = 130_000_000
+    expected_inc = int(round(base_withdrawal_cents * 1.1))
+    assert apply_guyton_klinkers_guardrails(portfolio_prosperity, base_withdrawal_cents, initial_rate) == expected_inc
+
+    # 4. Edge case: zero portfolio value
+    assert apply_guyton_klinkers_guardrails(0, base_withdrawal_cents, initial_rate) == base_withdrawal_cents
