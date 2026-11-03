@@ -5,7 +5,21 @@ from lifesim.config import ScenarioModel
 from lifesim.engine import run
 from lifesim.montecarlo import run_monte_carlo
 from lifesim.compare import compare_scenarios, run_sensitivity_analysis
-from lifesim.analysis import monthly_rollup_df, category_summary_df
+from lifesim.analysis import monthly_rollup_df, category_summary_df, recommend_traditional_vs_roth
+
+
+def test_recommend_traditional_vs_roth() -> None:
+    # Test traditional recommendation
+    assert recommend_traditional_vs_roth(0.24, 0.12) == "Traditional"
+    assert recommend_traditional_vs_roth(0.22, 0.19) == "Traditional"
+
+    # Test roth recommendation
+    assert recommend_traditional_vs_roth(0.12, 0.22) == "Roth"
+    assert recommend_traditional_vs_roth(0.0, 0.10) == "Roth"
+
+    # Test tie recommendation
+    assert recommend_traditional_vs_roth(0.24, 0.24) == "Tie"
+    assert recommend_traditional_vs_roth(0.22, 0.20) == "Tie"
 
 
 def test_monte_carlo_monotonic_and_deterministic() -> None:

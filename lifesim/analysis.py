@@ -143,3 +143,12 @@ def category_summary_df(ledger: "Ledger") -> pd.DataFrame:
 
     return pd.DataFrame(result).sort_values("total", ascending=False)
 
+
+def recommend_traditional_vs_roth(current_marginal_rate: float, expected_retirement_effective_rate: float) -> str:
+    # Recommend Traditional if current rate exceeds expected rate by 3% or more
+    if current_marginal_rate - expected_retirement_effective_rate >= 0.03:
+        return "Traditional"
+    # Recommend Roth if expected rate is higher than current
+    if expected_retirement_effective_rate > current_marginal_rate:
+        return "Roth"
+    return "Tie"
