@@ -59,6 +59,7 @@ def main() -> None:
     parser.add_argument("--real-dollars", action="store_true", help="Deflate output metrics and charts into constant purchasing power dollars")
     parser.add_argument("--batch", type=str, default=None, help="Run multiple scenarios matching a glob pattern")
     parser.add_argument("--out-batch-csv", type=str, default=None, help="Export batch results to CSV path")
+    parser.add_argument("--progress", action="store_true", help="Show text-based progress bar during simulation")
 
     args = parser.parse_args()
 
@@ -116,7 +117,19 @@ def main() -> None:
     scenario = load_scenario(args.scenario, overrides=overrides_list)
 
     print(f"Running simulation for {scenario.days} days...")
-    ledger = run(scenario)
+
+    def render_progress(day: int, total_days: int, year: int) -> None:
+        bar_len = 40
+        fraction = day / max(1, total_days - 1)
+        filled = int(round(bar_len * fraction))
+        bar_str = "=" * filled + "-" * (bar_len - filled)
+        sys.stdout.write(f"\rProgress: [{bar_str}] {day}/{total_days} days | Year: {year}")
+        sys.stdout.flush()
+        if day == total_days - 1:
+            sys.stdout.write("\n")
+
+    callback = render_progress if args.progress else None
+    ledger = run(scenario, progress_callback=callback)
 
     if args.real_dollars:
         ledger.daily_records = ledger.real_df(scenario.start).to_dict(orient="records")

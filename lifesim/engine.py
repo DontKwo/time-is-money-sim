@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Dict, List
+from typing import Callable, Dict, List, Optional
 from .config import ScenarioModel
 from .schedule import build_fire_counts
 from .macro import MacroState
@@ -20,7 +20,10 @@ from .steps import (
 )
 
 
-def run(scenario: ScenarioModel) -> Ledger:
+def run(
+    scenario: ScenarioModel,
+    progress_callback: Optional[Callable[[int, int, int], None]] = None,
+) -> Ledger:
     ledger = Ledger()
     base_seed = scenario.seed if scenario.seed is not None else 42
     macro_rng = derive_rng(base_seed, "macro", "cpi")
@@ -62,6 +65,10 @@ def run(scenario: ScenarioModel) -> Ledger:
 
     for day_index in range(scenario.days):
         current_date = scenario.start + timedelta(days=day_index)
+
+        if progress_callback:
+            progress_callback(day_index, scenario.days, current_date.year)
+
         current_tax_year, tax_state = step_1_macro_rollover(
             day_index, current_date, current_tax_year, tax_state, payroll_state, accounts_manager,
             prior_year_tax_states, annual_contributions_ytd, macro_state

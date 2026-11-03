@@ -501,3 +501,24 @@ flows:
     names = df["Scenario"].tolist()
     assert "scenario_1.yaml" in names
     assert "scenario_2.yaml" in names
+
+
+def test_cli_progress_flag(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    scenario_file = tmp_path / "scenario_progress.yaml"
+    scenario_file.write_text("""
+start: 2026-01-01
+days: 5
+accounts:
+  checking: {balance: 1000}
+flows: []
+""")
+
+    test_args = ["lifesim", str(scenario_file), "--progress"]
+    with patch.object(sys, "argv", test_args):
+        main()
+
+    captured = capsys.readouterr()
+    # Check that progress bar elements are present in stdout
+    assert "Progress:" in captured.out
+    assert "Year: 2026" in captured.out
+    assert "4/5 days" in captured.out
