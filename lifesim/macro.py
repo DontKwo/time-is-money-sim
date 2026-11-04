@@ -12,13 +12,14 @@ class InflationModel(BaseModel):
 
 
 class MacroState:
-    def __init__(self, model: InflationModel, sim_start: date, rng: Optional[np.random.Generator] = None) -> None:
+    def __init__(self, model: InflationModel, sim_start: date, rng: Optional[np.random.Generator] = None, exchange_rates: Optional[dict[str, float]] = None) -> None:
         self.model = model
         self.sim_start = sim_start
         self.macro_rng = rng if rng is not None else np.random.default_rng(42)
         self.inflation_index: float = 1.0
         self.active_annual_rate: float = model.rate
         self.current_year: int = sim_start.year
+        self.exchange_rates: dict[str, float] = exchange_rates if exchange_rates is not None else {}
 
     def advance_day(self, current_date: date) -> None:
         if current_date > self.sim_start and current_date.month == 1 and current_date.day == 1:
@@ -38,3 +39,8 @@ class MacroState:
         scaled_limit = base_limit * self.inflation_index
         return round(scaled_limit / round_increment) * round_increment
 
+
+def convert_currency(amount_cents: int, from_currency: str, to_currency: str, rate: float) -> int:
+    if from_currency == to_currency:
+        return amount_cents
+    return int(round(amount_cents * rate))

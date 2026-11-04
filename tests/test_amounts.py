@@ -1,6 +1,7 @@
 from datetime import date
 import numpy as np
 from lifesim.amounts import resolve_flow_amount_cents, get_amount
+from lifesim.macro import convert_currency
 from lifesim.config import (
     AmountModel,
     FlowModel,
@@ -101,3 +102,14 @@ def test_date_range_spread_evenly() -> None:
     assert day3_cents == 33_333
     assert day1_cents + day2_cents + day3_cents == 100_000
 
+
+def test_convert_currency() -> None:
+    # Same currency
+    assert convert_currency(100_00, "USD", "USD", 1.2) == 100_00
+
+    # Different currency
+    assert convert_currency(100_00, "USD", "EUR", 0.85) == 85_00
+    assert convert_currency(100_00, "EUR", "USD", 1.18) == 118_00
+
+    # Rounding check
+    assert convert_currency(100, "USD", "EUR", 0.855) == 86
