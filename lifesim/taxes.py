@@ -155,3 +155,21 @@ def compute_april_settlement_cents(
     total_tax_liability_cents = total_fed_tax_cents + total_state_tax_cents
     total_withheld_cents = tax_state.ytd_fed_withheld_cents + tax_state.ytd_state_withheld_cents
     return total_tax_liability_cents - total_withheld_cents
+
+
+def calc_aca_premium_tax_credit(
+    magi_cents: int,
+    federal_poverty_level_cents: int,
+    benchmark_silver_cents: int,
+) -> int:
+    if federal_poverty_level_cents <= 0:
+        return 0
+    fpl_pct = magi_cents / federal_poverty_level_cents
+    if fpl_pct < 1.0 or fpl_pct > 4.0:
+        return 0
+
+    # Scale from 2.0% at 100% FPL to 9.5% at 400% FPL
+    expected_pct = 0.02 + 0.025 * (fpl_pct - 1.0)
+    expected_contribution = int(round(magi_cents * expected_pct))
+
+    return max(0, benchmark_silver_cents - expected_contribution)

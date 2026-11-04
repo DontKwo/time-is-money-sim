@@ -21,6 +21,7 @@ from lifesim.taxes import (
     compute_fica_cents,
     compute_progressive_tax_cents,
     compute_april_settlement_cents,
+    calc_aca_premium_tax_credit,
 )
 from lifesim.events import EventManager
 from lifesim.payroll import PayrollState
@@ -331,3 +332,47 @@ def test_salt_cap_married_separate_and_joint() -> None:
 
     # Single gets $5k mortgage + $10k SALT = $15k deductions; Separate gets $5k mortgage + $5k SALT = $10k deductions
     assert separate_settlement_cents > single_settlement_cents
+
+
+def test_aca_subsidy_below_100_fpl_returns_zero() -> None:
+    # MAGI = $14,000, FPL = $15,000 (FPL pct = 0.93)
+    subsidy_cents = calc_aca_premium_tax_credit(1_400_000, 1_500_000, 500_000)
+    assert subsidy_cents == 0
+
+
+def test_aca_subsidy_above_400_fpl_returns_zero() -> None:
+    # MAGI = $61,000, FPL = $15,000 (FPL pct = 4.06)
+    subsidy_cents = calc_aca_premium_tax_credit(6_100_000, 1_500_000, 500_000)
+    assert subsidy_cents == 0
+
+
+def test_aca_subsidy_at_100_fpl() -> None:
+    # MAGI = $15,000, FPL = $15,000 (FPL pct = 1.0)
+    # Expected pct = 0.02. Contribution = $15,000 * 0.02 = $300
+    # Subsidy = max(0, $5,000 - $300) = $4,700
+    subsidy_cents = calc_aca_premium_tax_credit(1_500_000, 1_500_000, 500_000)
+    assert subsidy_cents == 470_000
+
+
+def test_aca_subsidy_at_250_fpl() -> None:
+    # MAGI = $37,500, FPL = $15,000 (FPL pct = 2.5)
+    # Expected pct = 0.02 + 0.025 * 1.5 = 0.0575
+    # Contribution = $37,500 * 0.0575 = $2,156.25 ($2,156)
+    # Subsidy = max(0, $5,000 - $2,156) = $2,844
+    subsidy_cents = calc_aca_premium_tax_credit(3_750_000, 1_500_000, 500_000)
+    assert subsidy_cents == 284_375
+
+
+def test_aca_subsidy_at_400_fpl() -> None:
+    # MAGI = $60,000, FPL = $15,000 (FPL pct = 4.0)
+    # Expected pct = 0.02 + 0.025 * 3.0 = 0.095
+    # Contribution = $60,000 * 0.095 = $5,700
+    # Subsidy = max(0, $5,000 - $5,700) = 0
+    subsidy_cents = calc_aca_premium_tax_credit(6_000_000, 1_500_000, 500_000)
+    assert subsidy_cents == 0
+
+
+def test_aca_subsidy_negative_fpl_returns_zero() -> None:
+    # Test for zero or negative FPL
+    subsidy_cents = calc_aca_premium_tax_credit(3_000_000, -100, 500_000)
+    assert subsidy_cents == 0
