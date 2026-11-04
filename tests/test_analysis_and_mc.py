@@ -200,3 +200,32 @@ def test_real_dollars_deflation() -> None:
     assert nominal_end_nw == 10000.0
     assert real_end_nw < nominal_end_nw
     assert abs(real_end_nw - (10000.0 / ((1.10) ** (3.0)))) < 100.0
+
+def test_historical_crisis_simulate() -> None:
+    scenario = ScenarioModel(
+        start=date(2026, 1, 1),
+        days=365 * 5,
+        seed=100,
+        accounts={
+            "checking": {"kind": "checking", "balance": 5000.0},
+            "brokerage": {
+                "kind": "investment",
+                "balance": 100000.0,
+                "expected_return": 0.08,
+                "volatility": 0.15,
+            },
+        },
+        flows=[],
+    )
+
+    from lifesim.montecarlo import simulate_historical_crisis
+
+    result_1929 = simulate_historical_crisis(scenario, "1929_depression")
+    assert result_1929["crisis_type"] == "1929_depression"
+    assert result_1929["max_drawdown_pct"] > 10.0
+
+    result_gfc = simulate_historical_crisis(scenario, "2008_gfc")
+    assert result_gfc["crisis_type"] == "2008_gfc"
+
+    with pytest.raises(ValueError):
+        simulate_historical_crisis(scenario, "unknown_crisis")
