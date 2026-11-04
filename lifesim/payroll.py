@@ -30,6 +30,7 @@ class PayrollState:
         self.ytd_total_401k_by_job_cents: Dict[str, int] = {}
         self.ytd_employer_match_by_job_cents: Dict[str, int] = {}
         self.ytd_hsa_cents: int = 0
+        self.ytd_fsa_cents: int = 0
         self.ytd_espp_by_job_cents: Dict[str, int] = {}
         self.ytd_fed_withheld_cents: int = 0
         self.ytd_state_withheld_cents: int = 0
@@ -49,6 +50,7 @@ class PayrollState:
         self.ytd_total_401k_by_job_cents.clear()
         self.ytd_employer_match_by_job_cents.clear()
         self.ytd_hsa_cents = 0
+        self.ytd_fsa_cents = 0
         self.ytd_espp_by_job_cents.clear()
         self.ytd_fed_withheld_cents = 0
         self.ytd_state_withheld_cents = 0
@@ -152,6 +154,22 @@ def process_paycheck(
 
     # 2. Pre-tax Medical & HSA
     pretax_med_cents = min(gross_cents, int(round(paycheck.pretax_deductions_per_period * 100.0)))
+    emp_fsa_cents = 0
+    if paycheck.fsa and paycheck.fsa.enabled:
+        fsa_spec = paycheck.fsa
+        annual_cap = fsa_spec.annual_contribution
+        fsa_limit_cents = int(round(annual_cap * 100.0))
+        fsa_room = max(0, fsa_limit_cents - payroll_state.ytd_fsa_cents)
+        periods = _infer_pay_periods(paycheck)
+        desired_fsa = int(round(fsa_limit_cents / periods))
+        allowed_emp = min(fsa_room, max(0, gross_cents - pretax_med_cents))
+        emp_fsa_cents = min(desired_fsa, allowed_emp)
+        payroll_state.ytd_fsa_cents += emp_fsa_cents
+        to_acc = fsa_spec.to_account
+        if emp_fsa_cents > 0:
+            balances[to_acc] = balances.get(to_acc, 0) + emp_fsa_cents
+            ledger.append(current_date, f"{job_name} FSA Contribution", emp_fsa_cents, to_acc, balances[to_acc])
+
     emp_hsa_cents = 0
     er_hsa_cents = 0
 
@@ -171,7 +189,7 @@ def process_paycheck(
         fixed_emp_hsa = int(round(hsa_spec.employee_per_period * 100.0))
         pct_emp_hsa = int(round(gross_cents * hsa_spec.employee_pct))
         desired_emp = fixed_emp_hsa + pct_emp_hsa
-        allowed_emp = min(hsa_room, max(0, gross_cents - pretax_med_cents))
+        allowed_emp = min(hsa_room, max(0, gross_cents - pretax_med_cents - emp_fsa_cents))
         emp_hsa_cents = min(desired_emp, allowed_emp)
 
         payroll_state.ytd_hsa_cents += er_hsa_cents + emp_hsa_cents
@@ -208,7 +226,7 @@ def process_paycheck(
         emp_room = max(0, emp_cap_cents - payroll_state.ytd_emp_401k_cents)
         job_total_401k = payroll_state.ytd_total_401k_by_job_cents.get(job_name, 0)
         room_415c = max(0, total_415c_cap_cents - job_total_401k)
-        available_salary = max(0, gross_cents - pretax_med_cents - emp_hsa_cents)
+        available_salary = max(0, gross_cents - pretax_med_cents - emp_hsa_cents - emp_fsa_cents)
         effective_room = min(emp_room, room_415c, available_salary)
 
         trad_401k_cents = min(desired_trad, effective_room)
@@ -278,7 +296,7 @@ def process_paycheck(
 
     # 5. FICA and Income Tax Withholding
     # HSA contributions explicitly reduce FICA taxable income and ordinary taxable income
-    fica_wages_cents = max(0, gross_cents - pretax_med_cents - emp_hsa_cents)
+    fica_wages_cents = max(0, gross_cents - pretax_med_cents - emp_hsa_cents - emp_fsa_cents)
     ss_wage_base = tax_config.ss_wage_base if tax_config else 176_100.0
     if macro_state:
         ss_wage_base = macro_state.get_indexed_limit(ss_wage_base, 500.0)
@@ -348,6 +366,7 @@ def process_paycheck(
     deductions_sum = (
         pretax_med_cents
         + emp_hsa_cents
+        + emp_fsa_cents
         + trad_401k_cents
         + taxes_cents
         + roth_401k_cents

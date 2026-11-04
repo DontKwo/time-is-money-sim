@@ -17,7 +17,7 @@ class RateStepModel(BaseModel):
 AccountKind = Literal[
     "checking", "savings", "hysa", "cd",
     "investment", "traditional_401k", "roth_401k",
-    "traditional_ira", "roth_ira", "hsa", "529", "college_529",
+    "traditional_ira", "roth_ira", "hsa", "fsa", "529", "college_529",
     "credit_card", "loan", "mortgage", "student_loan", "auto_loan"
 ]
 
@@ -287,6 +287,12 @@ class Retirement401kSpec(BaseModel):
     annual_total_limit: float = 70000.0
 
 
+class FSASpec(BaseModel):
+    enabled: bool = True
+    to_account: str = "fsa"
+    annual_contribution: float = 0.0
+
+
 class HSASpec(BaseModel):
     enabled: bool = True
     to_account: str = "hsa"
@@ -336,6 +342,7 @@ class PaycheckModel(BaseModel):
     bonuses: List[BonusSpec] = Field(default_factory=list)
     retirement_401k: Optional[Retirement401kSpec] = None
     hsa: Optional[HSASpec] = None
+    fsa: Optional[FSASpec] = None
     pretax_deductions_per_period: float = 0.0
     posttax_deductions_per_period: float = 0.0
     espp: Optional[ESPPSpec] = None
@@ -627,6 +634,8 @@ class ScenarioModel(BaseModel):
         for paycheck in self.paychecks:
             for deposit in paycheck.direct_deposit:
                 check_account_name("paycheck", paycheck.name, deposit.to)
+            if paycheck.fsa is not None:
+                check_account_name("paycheck", paycheck.name, paycheck.fsa.to_account)
             if paycheck.hsa is not None:
                 check_account_name("paycheck", paycheck.name, paycheck.hsa.to_account)
             if paycheck.retirement_401k is not None:
