@@ -270,7 +270,7 @@ def test_cli_validate_invalid_yaml(tmp_path: Path, capsys: pytest.CaptureFixture
 
     assert exit_info.value.code == 1
     captured = capsys.readouterr()
-    assert "Validation error:" in captured.out
+    assert "Validation error" in captured.out
 
 
 def test_cli_validate_broken_account(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
@@ -291,7 +291,7 @@ accounts:
 
     assert exit_info.value.code == 1
     captured = capsys.readouterr()
-    assert "Validation error:" in captured.out
+    assert "Validation error" in captured.out
 
 def test_cli_html_report_export(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
     scenario_file = tmp_path / "scenario_html.yaml"

@@ -26,8 +26,9 @@ from lifesim.batch import run_batch, format_batch_summary
 
 
 def main() -> None:
+
     parser = argparse.ArgumentParser(description="Life Money Simulator")
-    parser.add_argument("scenario", type=str, nargs="?", default=None, help="Path to scenario YAML file (optional if --batch is used)")
+    parser.add_argument("args", nargs="*", default=[], help="Optional 'validate' command followed by file, or just path to scenario YAML")
     parser.add_argument("--out-ledger", type=str, default="ledger.csv", help="Output ledger CSV path")
     parser.add_argument("--out-plot", type=str, default="balances.png", help="Output plot PNG path")
     parser.add_argument(
@@ -62,6 +63,18 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    # Handle optional command vs scenario path
+    command = None
+    args.scenario = None
+    if args.args:
+        if args.args[0] == "validate":
+            command = "validate"
+            if len(args.args) > 1:
+                args.scenario = args.args[1]
+        else:
+            args.scenario = args.args[0]
+
+
 
     if args.batch is not None:
         import glob
@@ -91,19 +104,25 @@ def main() -> None:
     if args.scenario is None:
         parser.error("scenario is required unless --batch is provided")
     # Handle scenario validation mode
-    if args.validate:
+    if args.validate or command == "validate":
+        if not args.scenario:
+            print("Error: Scenario file path required for validate command.")
+            sys.exit(1)
+        from lifesim.validation import validate_scenario_yaml
         scenario_file_path = Path(args.scenario)
         if not scenario_file_path.exists():
             print(f"Error: Scenario file {args.scenario} not found.")
             sys.exit(1)
-        try:
-            overrides_arg: Optional[List[str]] = args.overrides if args.overrides else None
-            load_scenario(args.scenario, overrides=overrides_arg)
+
+        errors = validate_scenario_yaml(args.scenario)
+        if errors:
+            print("Validation errors:")
+            for err in errors:
+                print(f" - {err}")
+            sys.exit(1)
+        else:
             print(f"Validation successful: {args.scenario} is valid.")
             sys.exit(0)
-        except (yaml.YAMLError, pydantic.ValidationError, ValueError) as validation_err:
-            print(f"Validation error: {validation_err}")
-            sys.exit(1)
 
     # Verify scenario path exists
     scenario_path = Path(args.scenario)

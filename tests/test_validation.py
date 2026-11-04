@@ -1,7 +1,11 @@
 from datetime import date
 from typing import Dict, Any
 import pytest
+import tempfile
+import yaml
+import os
 from lifesim.config import ScenarioModel
+from lifesim.validation import validate_scenario_yaml
 
 
 def build_base_scenario_payload() -> Dict[str, Any]:
@@ -153,3 +157,73 @@ def test_invalid_goal_account() -> None:
     ]
     with pytest.raises(ValueError, match="goal 'Emergency Fund Milestone' references non-existent account 'nonexistent_emergency_fund'"):
         ScenarioModel(**scenario_payload)
+
+def test_validate_scenario_yaml_valid() -> None:
+    payload = build_base_scenario_payload()
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml") as f:
+        yaml.dump(payload, f)
+        temp_name = f.name
+
+    try:
+        errors = validate_scenario_yaml(temp_name)
+        assert len(errors) == 0
+    finally:
+        os.unlink(temp_name)
+
+def test_validate_scenario_yaml_invalid_amount() -> None:
+    payload = build_base_scenario_payload()
+    payload["flows"] = [
+        {
+            "name": "Groceries",
+            "type": "expense",
+            "schedule": {"daily": True},
+            "amount": {"fixed": -50.0},
+            "from_account": "checking",
+        }
+    ]
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml") as f:
+        yaml.dump(payload, f)
+        temp_name = f.name
+
+    try:
+        errors = validate_scenario_yaml(temp_name)
+        assert len(errors) > 0
+        assert any("greater than or equal to 0" in e for e in errors)
+    finally:
+        os.unlink(temp_name)
+
+def test_validate_scenario_yaml_invalid_account() -> None:
+    payload = build_base_scenario_payload()
+    payload["flows"] = [
+        {
+            "name": "Groceries",
+            "type": "expense",
+            "schedule": {"daily": True},
+            "amount": {"fixed": 50.0},
+            "from_account": "ghost_account",
+        }
+    ]
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml") as f:
+        yaml.dump(payload, f)
+        temp_name = f.name
+
+    try:
+        errors = validate_scenario_yaml(temp_name)
+        assert len(errors) > 0
+        assert any("references non-existent account" in e for e in errors)
+    finally:
+        os.unlink(temp_name)
+
+def test_validate_scenario_yaml_invalid_date() -> None:
+    payload = build_base_scenario_payload()
+    payload["start"] = "2026-13-45" # invalid date format
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml") as f:
+        yaml.dump(payload, f)
+        temp_name = f.name
+
+    try:
+        errors = validate_scenario_yaml(temp_name)
+        assert len(errors) > 0
+        assert any("start" in e for e in errors)
+    finally:
+        os.unlink(temp_name)

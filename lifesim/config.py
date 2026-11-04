@@ -145,6 +145,24 @@ class AmountModel(BaseModel):
     max_amount: Optional[float] = None
     round_to: Optional[float] = None  # e.g. 1.0 rounds to whole dollars
 
+    @model_validator(mode="after")
+    def check_non_negative(self) -> "AmountModel":
+        if self.fixed is not None and self.fixed < 0:
+            raise ValueError("Amount fixed value must be greater than or equal to 0")
+        if self.normal is not None and self.normal[0] < 0:
+            raise ValueError("Amount normal mean must be greater than or equal to 0")
+        if self.uniform is not None and (self.uniform[0] < 0 or self.uniform[1] < 0):
+            raise ValueError("Amount uniform values must be greater than or equal to 0")
+        if self.triangular is not None and any(v < 0 for v in self.triangular):
+            raise ValueError("Amount triangular values must be greater than or equal to 0")
+        if self.choice is not None and any(v[0] < 0 for v in self.choice):
+            raise ValueError("Amount choice values must be greater than or equal to 0")
+        if self.min_amount is not None and self.min_amount < 0:
+            raise ValueError("Amount min_amount must be greater than or equal to 0")
+        if self.max_amount is not None and self.max_amount < 0:
+            raise ValueError("Amount max_amount must be greater than or equal to 0")
+        return self
+
 
 class NthWeekdaySpec(BaseModel):
     nth: int  # 1, 2, 3, 4, 5, or -1 for last occurrence in month
