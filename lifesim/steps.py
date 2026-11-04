@@ -29,6 +29,7 @@ from .policies import (
     apply_portfolio_rebalance,
     apply_retirement_drawdown,
     apply_roth_conversion_ladder,
+    apply_mega_backdoor_roth,
     apply_sinking_fund,
 )
 from .events import EventManager
@@ -755,6 +756,14 @@ def step_10_policies(
                 current_date,
                 payroll_state,
                 accounts_manager,
+            )
+        elif policy.kind == "mega_backdoor_roth":
+            apply_mega_backdoor_roth(
+                policy,
+                balances,
+                ledger,
+                current_date,
+                annual_contributions_ytd,
             )
         elif policy.kind == "sinking_fund":
             apply_sinking_fund(
