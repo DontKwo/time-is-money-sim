@@ -49,8 +49,8 @@ All existing public signatures (`load_scenario`, `should_fire`, `get_amount`, `r
    - Keep comments to 2 lines or fewer and state only current behavior. Never write `Args:` / `Returns:` multi-line docstrings on short helper functions.
    - Never call `print()` inside library modules (`lifesim/cli.py` is the sole module allowed to write terminal output; use `logging` elsewhere).
 6. **Verification commands**:
-   - Run unit tests via `uv run --no-project --python "<venv_python>" python -m pytest`.
-   - Run strict lint checks via `uv run --no-project python <path_to_claudemd_linter.py> . --level strict` and resolve all reported issues before finishing any task.
+   - Run unit tests via `uv run --python "<venv_python>" python -m pytest`.
+   - Run strict lint checks via `uv run python <path_to_claudemd_linter.py> . --level strict` and resolve all reported issues before finishing any task.
 
 ## 2. Target repository architecture
 

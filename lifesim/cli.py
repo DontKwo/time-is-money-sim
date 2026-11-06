@@ -6,11 +6,12 @@ from typing import Optional, List
 import pydantic
 import yaml
 
-from lifesim.analysis import compute_summary
+from lifesim.analysis import compute_summary, format_terminal_summary
 from lifesim.config import load_scenario
 from lifesim.engine import run
 from lifesim.plots import (
     plot_balances,
+    plot_dashboard,
     plot_net_worth_stack,
     plot_monthly_cashflow,
     plot_compounding_breakdown,
@@ -60,6 +61,9 @@ def main() -> None:
     parser.add_argument("--real-dollars", action="store_true", help="Deflate output metrics and charts into constant purchasing power dollars")
     parser.add_argument("--batch", type=str, default=None, help="Run multiple scenarios matching a glob pattern")
     parser.add_argument("--out-batch-csv", type=str, default=None, help="Export batch results to CSV path")
+    parser.add_argument("--show", action="store_true", help="Display visual plot dashboard interactively in a window")
+    parser.add_argument("--out-dashboard", type=str, default=None, help="Output multi-panel dashboard plot PNG path")
+    parser.add_argument("--quiet", action="store_true", help="Suppress terminal summary table")
 
     args = parser.parse_args()
 
@@ -154,6 +158,17 @@ def main() -> None:
 
     print(f"Generating plot to {args.out_plot}...")
     plot_balances(dataframe, args.out_plot)
+
+    dashboard_path = args.out_dashboard
+    if dashboard_path is not None or args.show:
+        dash_file = dashboard_path or "dashboard.png"
+        print(f"Generating dashboard to {dash_file}...")
+        plot_dashboard(ledger, dash_file, show=args.show)
+
+    if not args.quiet:
+        summary_text = format_terminal_summary(ledger.metrics, ledger.goal_results)
+        if summary_text:
+            print(summary_text)
 
     if args.out_daily is not None:
         daily_dataframe = ledger.daily_df()

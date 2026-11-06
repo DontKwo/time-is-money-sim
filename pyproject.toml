@@ -1,0 +1,30 @@
+[project]
+name = "lifesim"
+version = "0.1.0"
+description = "A daily-tick personal finance simulator in Python"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.10.0",
+    "numpy>=2.0.0",
+    "pandas>=2.2.0",
+    "pydantic>=2.10.0",
+    "pyyaml>=6.0.0",
+    "tabulate>=0.9.0",
+]
+
+[project.scripts]
+lifesim = "lifesim.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["lifesim"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "playwright>=1.40.0",
+]
