@@ -752,9 +752,9 @@ def load_scenario(path: str, overrides: Optional[List[str]] = None) -> ScenarioM
     current_dir = base_dir
     repo_root = base_dir
     while current_dir != os.path.dirname(current_dir):
-        req_path = os.path.join(current_dir, "requirements.txt")
+        project_path = os.path.join(current_dir, "pyproject.toml")
         git_path = os.path.join(current_dir, ".git")
-        if os.path.exists(req_path) or os.path.exists(git_path):
+        if os.path.exists(project_path) or os.path.exists(git_path):
             repo_root = current_dir
             break
         current_dir = os.path.dirname(current_dir)

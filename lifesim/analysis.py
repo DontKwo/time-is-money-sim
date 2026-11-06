@@ -1,6 +1,7 @@
 from datetime import date
 from typing import Dict, Any, List, TYPE_CHECKING
 import pandas as pd
+import tabulate
 from .config import ScenarioModel
 
 if TYPE_CHECKING:
@@ -152,3 +153,47 @@ def recommend_traditional_vs_roth(current_marginal_rate: float, expected_retirem
     if expected_retirement_effective_rate > current_marginal_rate:
         return "Roth"
     return "Tie"
+
+
+def format_terminal_summary(metrics: Dict[str, Any], goals: List[Dict[str, Any]]) -> str:
+    # Generate human-readable ASCII summary table for terminal display
+    summary_lines = []
+    net_worth_stats = metrics.get("net_worth", {})
+    cashflow_stats = metrics.get("cashflow", {})
+    liquidity_stats = metrics.get("liquidity", {})
+
+    table_rows = []
+    if "starting" in net_worth_stats and "ending" in net_worth_stats:
+        table_rows.append(["Starting Net Worth", f"${net_worth_stats['starting']:,.2f}"])
+        table_rows.append(["Ending Net Worth", f"${net_worth_stats['ending']:,.2f}"])
+        sign = "+" if net_worth_stats.get("change", 0.0) >= 0 else ""
+        table_rows.append(["Net Worth Change", f"{sign}${net_worth_stats.get('change', 0.0):,.2f}"])
+        table_rows.append(["Annualized CAGR", f"{net_worth_stats.get('cagr', 0.0) * 100:.2f}%"])
+
+    if "total_income" in cashflow_stats:
+        table_rows.append(["Total Income", f"${cashflow_stats['total_income']:,.2f}"])
+        table_rows.append(["Total Spending", f"${cashflow_stats['total_spending']:,.2f}"])
+        table_rows.append(["Net Savings", f"${cashflow_stats.get('net_savings', 0.0):,.2f}"])
+        table_rows.append(["Savings Rate", f"{cashflow_stats.get('savings_rate', 0.0) * 100:.1f}%"])
+
+    if "lowest_checking" in liquidity_stats:
+        lowest_desc = f"${liquidity_stats['lowest_checking']:,.2f} ({liquidity_stats.get('lowest_checking_date', '-')})"
+        table_rows.append(["Lowest Checking", lowest_desc])
+        table_rows.append(["Days Overdrawn", f"{liquidity_stats.get('days_overdrawn', 0)}"])
+
+    if table_rows:
+        summary_lines.append("\n=== Simulation Financial Summary ===")
+        summary_lines.append(tabulate.tabulate(table_rows, headers=["Financial Metric", "Value"], tablefmt="rounded_outline"))
+
+    if goals:
+        milestone_rows = []
+        for goal_item in goals:
+            status = "Achieved" if goal_item.get("achieved") else "In Progress"
+            date_str = str(goal_item.get("achieved_date")) if goal_item.get("achieved_date") else "-"
+            progress = f"{goal_item.get('final_progress_pct', 0.0):.1f}%"
+            milestone_rows.append([goal_item.get("name", "Goal"), goal_item.get("kind", "-"), status, date_str, progress])
+        summary_lines.append("\n=== Financial Milestones ===")
+        headers = ["Goal", "Type", "Status", "Achieved Date", "Progress"]
+        summary_lines.append(tabulate.tabulate(milestone_rows, headers=headers, tablefmt="rounded_outline"))
+
+    return "\n".join(summary_lines)

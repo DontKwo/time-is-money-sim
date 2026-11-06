@@ -530,3 +530,61 @@ flows: []
     assert "accounts.checking.balance" in captured.out
     assert "1000.0" in captured.out
     assert "2000.0" in captured.out
+
+
+def test_cli_dashboard_and_summary(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    scenario_file = tmp_path / "scenario_dash.yaml"
+    scenario_file.write_text("""
+start: 2026-01-01
+days: 30
+accounts:
+  checking: {balance: 2000}
+flows:
+  - name: Salary
+    type: income
+    to: checking
+    schedule: {monthly: 1}
+    amount: {fixed: 1500}
+goals:
+  - name: Target Milestone
+    kind: account_balance
+    account: checking
+    target_amount: 3000
+""")
+
+    out_dash = tmp_path / "dash.png"
+    test_args = [
+        "lifesim",
+        str(scenario_file),
+        "--out-dashboard", str(out_dash),
+    ]
+    with patch.object(sys, "argv", test_args):
+        main()
+
+    captured = capsys.readouterr()
+    assert "Simulation Financial Summary" in captured.out
+    assert "Financial Milestones" in captured.out
+    assert "Starting Net Worth" in captured.out
+    assert out_dash.exists()
+
+
+def test_cli_quiet_suppresses_summary(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    scenario_file = tmp_path / "scenario_quiet.yaml"
+    scenario_file.write_text("""
+start: 2026-01-01
+days: 10
+accounts:
+  checking: {balance: 1000}
+flows: []
+""")
+
+    test_args = [
+        "lifesim",
+        str(scenario_file),
+        "--quiet",
+    ]
+    with patch.object(sys, "argv", test_args):
+        main()
+
+    captured = capsys.readouterr()
+    assert "Simulation Financial Summary" not in captured.out
