@@ -1,0 +1,67 @@
+import json
+from datetime import date
+from typing import List, Dict, Any, Optional
+import pandas as pd
+
+from .analysis import deflate_daily_records
+
+
+class Ledger:
+    def __init__(self) -> None:
+        self.records: List[Dict[str, Any]] = []
+        self.daily_records: List[Dict[str, Any]] = []
+        self.metrics: Dict[str, Any] = {}
+        self.goal_results: List[Dict[str, Any]] = []
+        self.inflation_indices: Dict[date, float] = {}
+
+    def append(
+        self,
+        tx_date: date,
+        flow_name: str,
+        amount: int,
+        account: str,
+        balance: int,
+        category: str = "uncategorized",
+        tx_kind: str = "flow",
+    ) -> None:
+        self.records.append({
+            "date": tx_date,
+            "flow": flow_name,
+            "amount": amount / 100.0,
+            "account": account,
+            "balance": balance / 100.0,
+            "category": category,
+            "tx_kind": tx_kind,
+        })
+
+    def to_df(self) -> pd.DataFrame:
+        return pd.DataFrame(self.records)
+
+    def daily_df(self) -> pd.DataFrame:
+        return pd.DataFrame(self.daily_records)
+
+    def real_df(self, base_date: Optional[date] = None) -> pd.DataFrame:
+        indices = self.inflation_indices
+        if base_date is not None and base_date in indices:
+            base_factor = indices[base_date]
+            indices = {dt: (val / base_factor) for dt, val in indices.items()}
+        deflated_records = deflate_daily_records(self.daily_records, indices)
+        return pd.DataFrame(deflated_records)
+
+    def export_jsonl(self, filepath: str) -> None:
+        with open(filepath, "w", encoding="utf-8") as file:
+            for record in self.records:
+                record_copy = dict(record)
+                if isinstance(record_copy.get("date"), date):
+                    record_copy["date"] = record_copy["date"].isoformat()
+                json_line = json.dumps(record_copy)
+                file.write(json_line + "\n")
+
+        daily_filepath = filepath.replace(".jsonl", "_daily.jsonl") if filepath.endswith(".jsonl") else filepath + "_daily.jsonl"
+        with open(daily_filepath, "w", encoding="utf-8") as daily_file:
+            for daily_record in self.daily_records:
+                daily_record_copy = dict(daily_record)
+                if isinstance(daily_record_copy.get("date"), date):
+                    daily_record_copy["date"] = daily_record_copy["date"].isoformat()
+                json_line = json.dumps(daily_record_copy)
+                daily_file.write(json_line + "\n")

@@ -1,0 +1,74 @@
+flows:
+  - name: "Rent"
+    type: expense
+    from: checking
+    category: housing
+    schedule:
+      monthly: 1
+    amount:
+      fixed: 1950.0
+    annual_escalation_rate: 0.035
+    escalation_mode: anniversary
+
+  - name: "Electricity"
+    type: expense
+    from: checking
+    category: utilities
+    schedule:
+      monthly: 15
+    amount:
+      normal: [95.0, 15.0]
+    seasonality:
+      6: 1.30
+      7: 1.45
+      8: 1.40
+
+  - name: "Heating Gas"
+    type: expense
+    from: checking
+    category: utilities
+    schedule:
+      monthly: 18
+    amount:
+      normal: [70.0, 12.0]
+    seasonality:
+      11: 1.40
+      12: 1.70
+      1: 1.80
+      2: 1.65
+
+  - name: "Water and Sewer"
+    type: expense
+    from: checking
+    category: utilities
+    schedule:
+      monthly: 22
+    amount:
+      normal: [65.0, 8.0]
+
+  - name: "Fiber Internet"
+    type: expense
+    from: checking
+    category: utilities
+    schedule:
+      monthly: 8
+    amount:
+      fixed: 75.0
+
+  - name: "Mobile Phone"
+    type: expense
+    from: checking
+    category: utilities
+    schedule:
+      monthly: 12
+    amount:
+      fixed: 85.0
+
+  - name: "Renter's Insurance"
+    type: expense
+    from: checking
+    category: insurance
+    schedule:
+      monthly: 1
+    amount:
+      fixed: 22.0

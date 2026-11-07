@@ -1,0 +1,48 @@
+flows:
+  - name: "Weekly Groceries"
+    type: expense
+    from: checking
+    category: groceries
+    schedule:
+      weekly: sat
+    amount:
+      grocery_estimate:
+        people: 2
+        cost_per_person_per_period: 90.0
+
+  - name: "Mid-Week Grocery Run"
+    type: expense
+    from: checking
+    category: groceries
+    schedule:
+      weekly: wed
+    skip_prob: 0.30
+    amount:
+      uniform: [25.0, 55.0]
+
+  - name: "Morning Coffee"
+    type: expense
+    from: checking
+    category: dining
+    schedule:
+      weekdays_only: true
+      daily_prob: 0.70
+    amount:
+      fixed: 5.75
+
+  - name: "Restaurant Dining"
+    type: expense
+    from: checking
+    category: dining
+    schedule:
+      random_per_week: 2.0
+      weekday_weights:
+        fri: 3.0
+        sat: 3.0
+        sun: 1.5
+        mon: 0.5
+        tue: 0.5
+        wed: 0.5
+        thu: 1.0
+    amount:
+      lognormal_dollars: [45.0, 0.35]

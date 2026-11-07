@@ -1,0 +1,44 @@
+flows:
+  - name: "Dental and Vision"
+    type: expense
+    from: checking
+    category: health
+    schedule:
+      every_n_months:
+        n: 6
+        day: 10
+    amount:
+      fixed: 120.0
+
+  - name: "Prescription Refills"
+    type: expense
+    from: checking
+    category: health
+    schedule:
+      monthly: 14
+    amount:
+      fixed: 35.0
+
+  - name: "Doctor Copays"
+    type: expense
+    from: checking
+    category: health
+    schedule:
+      random_per_month: 0.5
+    amount:
+      choice:
+        - [30.0, 0.70]
+        - [75.0, 0.30]
+
+events:
+  - name: "Unexpected Medical Emergency"
+    enabled: true
+    poisson_per_year: 0.25
+    category: health
+    amount:
+      lognormal_dollars: [2200.0, 0.6]
+    type: expense
+    account: checking
+    cooldown_days: 60
+    insurance_oop_max: 4500.0
+

@@ -1,0 +1,96 @@
+start: 2026-01-01
+days: 365
+seed: 42
+
+accounts:
+  checking:
+    kind: checking
+    balance: 1500.0
+  hysa:
+    kind: hysa
+    balance: 20000.0
+    annual_growth_rate: 0.045
+    interest_posting: monthly
+  rewards_card:
+    kind: credit_card
+    balance: 0.0
+    apr: 0.2499
+    credit_limit: 12000.0
+    statement_day: 25
+    due_day: 20
+    cashback_pct: 0.02
+    category_cashback:
+      dining: 0.04
+      groceries: 0.03
+      travel: 0.03
+    autopay:
+      enabled: true
+      from_account: checking
+      mode: statement_balance
+
+paychecks:
+  - name: "Consultant Salary"
+    enabled: true
+    schedule:
+      biweekly: fri
+      anchor: 2026-01-02
+    annual_salary: 95000.0
+    direct_deposit:
+      - to: hysa
+        fixed: 1200.0
+      - to: checking
+        remainder: true
+    tags: [salary, payday]
+
+flows:
+  - name: "Rent"
+    type: expense
+    from: checking
+    category: housing
+    schedule:
+      monthly: 1
+    amount:
+      fixed: 1750.0
+
+  - name: "Groceries"
+    type: expense
+    from: rewards_card
+    category: groceries
+    schedule:
+      weekly: sat
+    amount:
+      fixed: 180.0
+
+  - name: "Dining Out"
+    type: expense
+    from: rewards_card
+    category: dining
+    schedule:
+      weekly: fri
+    amount:
+      fixed: 85.0
+
+  - name: "Quarterly Travel"
+    type: expense
+    from: rewards_card
+    category: travel
+    schedule:
+      quarterly:
+        month_offset: 2
+        day: 15
+    amount:
+      fixed: 1200.0
+
+policies:
+  - name: "Cover Checking from HYSA"
+    kind: shortfall_cover
+    enabled: true
+    priority: 1
+    to_account: checking
+    from_accounts: [hysa]
+    minimum_balance: 500.0
+
+goals:
+  - name: "Debt Free Status"
+    kind: debt_free
+

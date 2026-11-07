@@ -1,0 +1,33 @@
+paychecks:
+  - name: "Primary Employment"
+    enabled: true
+    schedule:
+      biweekly: fri
+      anchor: 2026-01-02
+      weekend_rule: before
+      respect_us_holidays: true
+    annual_salary: 105000.0
+    annual_raise_pct: 0.035
+    raise_month: 3
+    raise_day: 1
+    bonuses:
+      - name: "December Bonus"
+        enabled: true
+        schedule:
+          yearly:
+            month: 12
+            day: 15
+        target_pct_of_salary: 0.08
+        supplemental_federal_rate: 0.22
+    tags: [salary, payday]
+
+flows:
+  - name: "Side-Gig Consulting"
+    type: income
+    to: checking
+    category: consulting
+    schedule:
+      random_per_month: 2.0
+    amount:
+      uniform: [300.0, 900.0]
+    tags: [side_gig]

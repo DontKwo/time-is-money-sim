@@ -1,0 +1,31 @@
+events:
+  - name: "Unexpected Car Repair"
+    enabled: true
+    poisson_per_year: 0.80
+    category: transport
+    amount:
+      triangular: [200.0, 550.0, 1400.0]
+    type: expense
+    account: checking
+    cooldown_days: 30
+
+  - name: "Vet or Home Emergency"
+    enabled: true
+    poisson_per_year: 0.40
+    category: emergencies
+    amount:
+      lognormal_dollars: [800.0, 0.50]
+    type: expense
+    account: checking
+    cooldown_days: 45
+
+  - name: "Electronics Replacement"
+    enabled: true
+    poisson_per_year: 0.30
+    category: electronics
+    amount:
+      uniform: [400.0, 1200.0]
+    type: expense
+    account: checking
+    cooldown_days: 60
+

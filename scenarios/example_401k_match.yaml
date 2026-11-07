@@ -1,0 +1,94 @@
+start: 2026-01-01
+days: 365
+seed: 42
+
+accounts:
+  checking:
+    kind: checking
+    balance: 5000.0
+  hysa:
+    kind: hysa
+    balance: 15000.0
+    annual_growth_rate: 0.0425
+    interest_posting: monthly
+  traditional_401k:
+    kind: traditional_401k
+    balance: 30000.0
+    annual_growth_rate: 0.075
+  hsa:
+    kind: hsa
+    balance: 2500.0
+    annual_growth_rate: 0.05
+  brokerage:
+    kind: investment
+    balance: 20000.0
+    expected_return: 0.08
+    dividend_yield: 0.015
+    drip: true
+
+paychecks:
+  - name: "Software Engineer Salary"
+    enabled: true
+    schedule:
+      biweekly: fri
+      anchor: 2026-01-02
+    annual_salary: 110000.0
+    annual_raise_pct: 0.035
+    raise_month: 3
+    raise_day: 1
+    retirement_401k:
+      enabled: true
+      traditional_pct: 0.06
+      employer_match:
+        enabled: true
+        match_rate: 1.0
+        up_to_pct: 0.06
+        annual_true_up: true
+        to_account: traditional_401k
+    hsa:
+      enabled: true
+      to_account: hsa
+      employee_per_period: 125.0
+      employer_per_period: 25.0
+      employer_annual_seed: 500.0
+      annual_limit: 4300.0
+    tags: [salary, payday]
+
+flows:
+  - name: "Rent"
+    type: expense
+    from: checking
+    category: housing
+    schedule:
+      monthly: 1
+    amount:
+      fixed: 2100.0
+
+  - name: "Groceries and Living"
+    type: expense
+    from: checking
+    category: living
+    schedule:
+      weekly: fri
+    amount:
+      fixed: 220.0
+
+policies:
+  - name: "Month-End Excess Sweep"
+    kind: excess_sweep
+    enabled: true
+    priority: 50
+    schedule:
+      monthly: "last"
+    from_account: checking
+    threshold: 6000.0
+    keep_buffer: 3500.0
+    allocations:
+      - to_account: brokerage
+        weight: 1.0
+
+goals:
+  - name: "Reach 100k Net Worth"
+    kind: net_worth
+    target_amount: 100000.0
+

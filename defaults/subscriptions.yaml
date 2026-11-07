@@ -1,0 +1,53 @@
+flows:
+  - name: "Streaming Video"
+    type: expense
+    from: checking
+    category: subscriptions
+    schedule:
+      monthly: 3
+    amount:
+      fixed: 19.99
+    tags: [subscription, cancellable]
+
+  - name: "Music Streaming"
+    type: expense
+    from: checking
+    category: subscriptions
+    schedule:
+      monthly: 11
+    amount:
+      fixed: 10.99
+    tags: [subscription, cancellable]
+
+  - name: "Cloud Storage"
+    type: expense
+    from: checking
+    category: subscriptions
+    schedule:
+      monthly: 17
+    amount:
+      fixed: 9.99
+    tags: [subscription, cancellable]
+
+  - name: "Gym Membership"
+    type: expense
+    from: checking
+    category: health
+    schedule:
+      monthly: 1
+    amount:
+      fixed: 65.0
+    tags: [subscription, cancellable]
+
+  - name: "Annual Prime / Wholesale Renewal"
+    type: expense
+    from: checking
+    category: subscriptions
+    schedule:
+      yearly:
+        month: 11
+        day: 25
+    amount:
+      fixed: 139.0
+    tags: [subscription, cancellable]
+

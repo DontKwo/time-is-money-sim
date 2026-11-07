@@ -1,0 +1,56 @@
+accounts:
+  traditional_401k:
+    kind: traditional_401k
+    balance: 25000.0
+    annual_growth_rate: 0.07
+  roth_ira:
+    kind: roth_ira
+    balance: 10000.0
+    annual_growth_rate: 0.07
+    annual_contribution_limit: 7000.0
+  brokerage:
+    kind: investment
+    balance: 5000.0
+    annual_growth_rate: 0.08
+    dividend_yield: 0.015
+    drip: true
+  hsa:
+    kind: hsa
+    balance: 3000.0
+    annual_growth_rate: 0.05
+
+paychecks:
+  - name: "Primary 401k Paycheck"
+    enabled: true
+    schedule:
+      biweekly: fri
+      anchor: 2026-01-02
+    annual_salary: 110000.0
+    retirement_401k:
+      enabled: true
+      traditional_pct: 0.06
+      employer_match:
+        enabled: true
+        match_rate: 1.0
+        up_to_pct: 0.06
+        annual_true_up: true
+        to_account: traditional_401k
+    hsa:
+      enabled: true
+      to_account: hsa
+      employee_per_period: 125.0
+      employer_annual_seed: 500.0
+    tags: [salary, payday]
+
+policies:
+  - name: "Payday Roth IRA Auto-Invest"
+    kind: payday_skim
+    enabled: true
+    priority: 10
+    trigger_tag: payday
+    from_account: checking
+    to_account: roth_ira
+    fixed_amount: 583.33
+    respect_annual_limit: true
+    overflow_to_account: brokerage
+

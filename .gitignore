@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+ledger.csv
+balances.png
+scenarios/seattle_2026_forecast.local.yaml
+dump.txt
+dump2.txt
+dump_md.py
+parse2.py
+parse_doc.py
+tasks.json
+.orchestrator_state.json
+
+# Environment and secrets
+.env
+.env.*
+
+

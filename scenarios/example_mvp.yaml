@@ -1,0 +1,24 @@
+start: 2026-01-01
+days: 35
+seed: 42
+
+accounts:
+  checking:
+    balance: 3000
+
+flows:
+  - name: Paycheck
+    type: income
+    to: checking
+    schedule:
+      weekly: fri
+    amount:
+      fixed: 2000
+
+  - name: Rent
+    type: expense
+    from: checking
+    schedule:
+      monthly: 1
+    amount:
+      fixed: 1800

@@ -1,0 +1,33 @@
+accounts:
+  cashback_card:
+    kind: credit_card
+    balance: 0.0
+    apr: 0.2299
+    credit_limit: 10000.0
+    statement_day: 25
+    due_day: 20
+    cashback_pct: 0.02
+    category_cashback:
+      dining: 0.03
+      groceries: 0.03
+    autopay:
+      enabled: true
+      from_account: checking
+      mode: statement_balance
+
+  student_loan:
+    kind: student_loan
+    principal: 18000.0
+    apr: 0.048
+    term_months: 120
+    payment_day: 15
+    payment_from_account: checking
+
+  auto_loan:
+    kind: auto_loan
+    principal: 12500.0
+    apr: 0.062
+    term_months: 48
+    payment_day: 5
+    payment_from_account: checking
+

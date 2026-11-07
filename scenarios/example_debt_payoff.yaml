@@ -1,0 +1,72 @@
+start: 2026-01-01
+days: 365
+seed: 42
+
+accounts:
+  checking:
+    kind: checking
+    balance: 4000.0
+  credit_card:
+    kind: credit_card
+    principal: 4500.0
+    apr: 0.2299
+    statement_day: 25
+    due_day: 20
+    min_payment_pct: 0.025
+    min_payment_floor: 35.0
+    autopay:
+      enabled: true
+      from_account: checking
+      mode: minimum_due
+  auto_loan:
+    kind: auto_loan
+    principal: 6000.0
+    apr: 0.075
+    term_months: 24
+    payment_day: 5
+    payment_from_account: checking
+  student_loan:
+    kind: student_loan
+    principal: 8000.0
+    apr: 0.052
+    term_months: 48
+    payment_day: 15
+    payment_from_account: checking
+
+paychecks:
+  - name: "Full-Time Salary"
+    enabled: true
+    schedule:
+      biweekly: fri
+      anchor: 2026-01-02
+    annual_salary: 80000.0
+    tags: [salary, payday]
+
+flows:
+  - name: "Rent and Living"
+    type: expense
+    from: checking
+    category: housing
+    schedule:
+      monthly: 1
+    amount:
+      fixed: 1600.0
+
+policies:
+  - name: "Debt Payoff Accelerator"
+    kind: debt_payoff
+    enabled: true
+    priority: 10
+    schedule:
+      monthly: 26
+    from_account: checking
+    keep_checking_buffer: 1000.0
+    strategy: avalanche
+    target_accounts: [credit_card, auto_loan, student_loan]
+    total_monthly_budget: 1400.0
+    extra_payment: 200.0
+
+goals:
+  - name: "Become Completely Debt Free"
+    kind: debt_free
+

@@ -1,0 +1,93 @@
+start: 2026-01-01
+days: 730
+seed: 42
+
+accounts:
+  checking:
+    kind: checking
+    balance: 15000.0
+  brokerage:
+    kind: investment
+    balance: 120000.0
+    expected_return: 0.08
+    volatility: 0.16
+    dividend_yield: 0.015
+    drip: true
+  traditional_401k:
+    kind: traditional_401k
+    balance: 85000.0
+    annual_growth_rate: 0.07
+
+paychecks:
+  - name: "Engineering Career"
+    enabled: true
+    schedule:
+      biweekly: fri
+      anchor: 2026-01-02
+    annual_salary: 135000.0
+    annual_raise_pct: 0.04
+    salary_steps:
+      - start: 2027-01-01
+        annual_salary: 160000.0
+    retirement_401k:
+      enabled: true
+      traditional_pct: 0.10
+      employer_match:
+        enabled: true
+        match_rate: 0.50
+        up_to_pct: 0.06
+        to_account: traditional_401k
+    tags: [salary, payday]
+
+flows:
+  - name: "Rent"
+    type: expense
+    from: checking
+    category: housing
+    schedule:
+      monthly: 1
+    amount:
+      fixed: 2200.0
+
+  - name: "Living Expenses"
+    type: expense
+    from: checking
+    category: living
+    schedule:
+      monthly: 15
+    amount:
+      fixed: 1800.0
+
+events:
+  - name: "Home Purchase and Mortgage"
+    date: 2027-06-01
+    disable_flows: ["Rent"]
+    one_time_flow:
+      name: "Down Payment and Closing Costs"
+      type: expense
+      from_account: checking
+      amount:
+        fixed: 40000.0
+      category: housing
+    open_account:
+      home_mortgage:
+        kind: mortgage
+        principal: 360000.0
+        apr: 0.065
+        term_months: 360
+        payment_day: 1
+        payment_from_account: checking
+        asset_value: 450000.0
+        asset_appreciation_rate: 0.035
+        property_tax_annual_pct: 0.012
+        home_insurance_annual: 1500.0
+        pmi_annual_pct: 0.006
+        pmi_drop_ltv: 0.78
+
+goals:
+  - name: "Reach Coast FIRE"
+    kind: coast_fire
+    retirement_age_years_away: 15.0
+    real_return_assumption: 0.05
+    swr: 0.04
+
