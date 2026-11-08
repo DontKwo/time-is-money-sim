@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "time-is-money-sim"
+version = "0.1.0"
+authors = [
+  { name="DontKwo", email="dontkwo@example.com" },
+]
+description = "A daily-tick personal finance simulator in Python."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "GPL-3.0-or-later" }
