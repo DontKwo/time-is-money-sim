@@ -1,5 +1,7 @@
 # Life Money Simulator
 
+FINANCIAL DISCLAIMER: time-is-money-sim is a pedagogical and conceptual economic simulation. It does NOT provide financial, investment, legal, tax, or retirement advice. The software is provided AS IS without warranty of any kind. The author is not a licensed financial planner or broker, and assumes no liability for economic decisions or outcomes.
+
 A daily-tick personal finance simulator in Python. It models multi-account banking, retirement accounts, paychecks, employer matching, taxes, credit cards, amortized loans, and automated cashflow policies.
 
 ## Installation
