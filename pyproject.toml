@@ -12,3 +12,5 @@ description = "A daily-tick personal finance simulator in Python."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "GPL-3.0-or-later" }
+[tool.hatch.build.targets.wheel]
+packages = ["lifesim"]
