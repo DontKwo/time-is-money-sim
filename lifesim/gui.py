@@ -20,11 +20,11 @@ from urllib.parse import urlparse
 import urllib.request
 import webbrowser
 
-from .compare import run_sensitivity_analysis
-from .config import load_scenario
-from .engine import run
-from .montecarlo import run_monte_carlo
-from .plots import (
+from lifesim.compare import run_sensitivity_analysis
+from lifesim.config import load_scenario
+from lifesim.engine import run
+from lifesim.montecarlo import run_monte_carlo
+from lifesim.plots import (
     plot_balances,
     plot_monte_carlo_fan,
     plot_monthly_cashflow,

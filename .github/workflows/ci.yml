@@ -118,7 +118,7 @@ jobs:
 
       - name: Package macOS Bundle and Self-Test
         run: |
-          uv run python -m PyInstaller --noconfirm --clean --onefile --windowed --icon=assets/icon.ico --name TimeIsMoneySim --workpath build/pyi-work --distpath build/pyi-dist --add-data "lifesim/gui_static:lifesim/gui_static" --add-data "scenarios:scenarios" --add-data "defaults:defaults" --add-data "assets:assets" lifesim/gui.py
+          uv run python -m PyInstaller --noconfirm --clean --windowed --icon=assets/icon.ico --name TimeIsMoneySim --workpath build/pyi-work --distpath build/pyi-dist --add-data "lifesim/gui_static:lifesim/gui_static" --add-data "scenarios:scenarios" --add-data "defaults:defaults" --add-data "assets:assets" lifesim/gui.py
           ./build/pyi-dist/TimeIsMoneySim.app/Contents/MacOS/TimeIsMoneySim --self-test
           mkdir -p release-assets
           (cd build/pyi-dist && zip -r ../../release-assets/TimeIsMoneySim-macOS.zip TimeIsMoneySim.app)
