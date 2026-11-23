@@ -6,17 +6,19 @@ Developers running simulation tests, building executables with PyInstaller, or r
 
 ---
 
-## Windows
+## Platform Instructions
+
+### Windows
 
 Choose either the official standalone installer or a Windows package manager:
 
-### Official Standalone Installer (PowerShell)
+#### Official Standalone Installer (PowerShell)
 
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-### Package Managers (`winget` or `scoop`)
+#### Package Managers (`winget` or `scoop`)
 
 ```powershell
 winget install --id=astral-sh.uv -e
@@ -24,9 +26,7 @@ winget install --id=astral-sh.uv -e
 scoop install main/uv
 ```
 
----
-
-## macOS
+### macOS
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -34,9 +34,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 brew install uv
 ```
 
----
-
-## Linux
+### Linux
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh

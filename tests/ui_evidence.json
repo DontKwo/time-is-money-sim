@@ -8,27 +8,27 @@
       "input_kind": "mouse",
       "trusted": true,
       "control_state": "enabled",
-      "test_node_id": "playwright::studio::scenario.select",
+      "test_node_id": "playwright::dashboard::scenario.select",
       "sequence_number": 1,
-      "screen_state_id": "studio"
+      "screen_state_id": "dashboard"
     },
     {
       "control_id": "scenario.days_input",
       "input_kind": "keyboard",
       "trusted": true,
       "control_state": "enabled",
-      "test_node_id": "playwright::studio::scenario.days_input",
+      "test_node_id": "playwright::dashboard::scenario.days_input",
       "sequence_number": 2,
-      "screen_state_id": "studio"
+      "screen_state_id": "dashboard"
     },
     {
       "control_id": "sim.run_btn",
       "input_kind": "mouse",
       "trusted": true,
       "control_state": "enabled",
-      "test_node_id": "playwright::studio::sim.run_btn",
+      "test_node_id": "playwright::dashboard::sim.run_btn",
       "sequence_number": 3,
-      "screen_state_id": "studio"
+      "screen_state_id": "dashboard"
     },
     {
       "control_id": "charts.networth_tab",
@@ -62,9 +62,18 @@
       "input_kind": "mouse",
       "trusted": true,
       "control_state": "enabled",
-      "test_node_id": "playwright::studio::sim.montecarlo_btn",
+      "test_node_id": "playwright::dashboard::sim.montecarlo_btn",
       "sequence_number": 7,
-      "screen_state_id": "studio"
+      "screen_state_id": "dashboard"
+    },
+    {
+      "control_id": "sim.sensitivity_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::dashboard::sim.sensitivity_btn",
+      "sequence_number": 8,
+      "screen_state_id": "dashboard"
     },
     {
       "control_id": "charts.analytics_tab",
@@ -72,17 +81,188 @@
       "trusted": true,
       "control_state": "enabled",
       "test_node_id": "playwright::charts::charts.analytics_tab",
-      "sequence_number": 8,
+      "sequence_number": 9,
       "screen_state_id": "charts"
     },
     {
-      "control_id": "sim.sensitivity_btn",
+      "control_id": "charts.comparison_tab",
       "input_kind": "mouse",
       "trusted": true,
       "control_state": "enabled",
-      "test_node_id": "playwright::studio::sim.sensitivity_btn",
-      "sequence_number": 9,
+      "test_node_id": "playwright::charts::charts.comparison_tab",
+      "sequence_number": 10,
+      "screen_state_id": "charts"
+    },
+    {
+      "control_id": "sim.export_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::dashboard::sim.export_btn",
+      "sequence_number": 11,
+      "screen_state_id": "dashboard"
+    },
+    {
+      "control_id": "sim.export_png_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::dashboard::sim.export_png_btn",
+      "sequence_number": 12,
+      "screen_state_id": "dashboard"
+    },
+    {
+      "control_id": "workspace.studio_tab",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::workspace.studio_tab",
+      "sequence_number": 13,
       "screen_state_id": "studio"
+    },
+    {
+      "control_id": "studio.start_input",
+      "input_kind": "keyboard",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::studio.start_input",
+      "sequence_number": 14,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "studio.days_input",
+      "input_kind": "keyboard",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::studio.days_input",
+      "sequence_number": 15,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "studio.seed_input",
+      "input_kind": "keyboard",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::studio.seed_input",
+      "sequence_number": 16,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "studio.load_preset_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::studio.load_preset_btn",
+      "sequence_number": 17,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "studio.add_account_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::studio.add_account_btn",
+      "sequence_number": 18,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "studio.add_paycheck_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::studio.add_paycheck_btn",
+      "sequence_number": 19,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "studio.add_flow_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::studio.add_flow_btn",
+      "sequence_number": 20,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "studio.add_event_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::studio.add_event_btn",
+      "sequence_number": 21,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "studio.add_policy_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::studio.add_policy_btn",
+      "sequence_number": 22,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "studio.import_yaml_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::studio.import_yaml_btn",
+      "sequence_number": 23,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "studio.yaml_file_input",
+      "input_kind": "keyboard",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::studio.yaml_file_input",
+      "sequence_number": 24,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "studio.download_yaml_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::studio.download_yaml_btn",
+      "sequence_number": 25,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "studio.run_custom_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::studio.run_custom_btn",
+      "sequence_number": 26,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "workspace.compare_tab",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::compare::workspace.compare_tab",
+      "sequence_number": 27,
+      "screen_state_id": "compare"
+    },
+    {
+      "control_id": "compare.include_studio_toggle",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::compare::compare.include_studio_toggle",
+      "sequence_number": 28,
+      "screen_state_id": "compare"
+    },
+    {
+      "control_id": "compare.run_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::compare::compare.run_btn",
+      "sequence_number": 29,
+      "screen_state_id": "compare"
     },
     {
       "control_id": "header.theme_toggle",
@@ -90,116 +270,17 @@
       "trusted": true,
       "control_state": "enabled",
       "test_node_id": "playwright::header::header.theme_toggle",
-      "sequence_number": 10,
+      "sequence_number": 30,
       "screen_state_id": "header"
     },
     {
-      "control_id": "sim.export_btn",
+      "control_id": "workspace.dashboard_tab",
       "input_kind": "mouse",
       "trusted": true,
       "control_state": "enabled",
-      "test_node_id": "playwright::studio::sim.export_btn",
-      "sequence_number": 11,
-      "screen_state_id": "studio"
-    },
-    {
-      "control_id": "scenario.select",
-      "input_kind": "mouse",
-      "trusted": true,
-      "control_state": "disabled",
-      "test_node_id": "playwright::audit::scenario.select",
-      "sequence_number": 12,
-      "screen_state_id": "audit"
-    },
-    {
-      "control_id": "scenario.days_input",
-      "input_kind": "mouse",
-      "trusted": true,
-      "control_state": "disabled",
-      "test_node_id": "playwright::audit::scenario.days_input",
-      "sequence_number": 13,
-      "screen_state_id": "audit"
-    },
-    {
-      "control_id": "sim.run_btn",
-      "input_kind": "mouse",
-      "trusted": true,
-      "control_state": "disabled",
-      "test_node_id": "playwright::audit::sim.run_btn",
-      "sequence_number": 14,
-      "screen_state_id": "audit"
-    },
-    {
-      "control_id": "sim.montecarlo_btn",
-      "input_kind": "mouse",
-      "trusted": true,
-      "control_state": "disabled",
-      "test_node_id": "playwright::audit::sim.montecarlo_btn",
-      "sequence_number": 15,
-      "screen_state_id": "audit"
-    },
-    {
-      "control_id": "sim.sensitivity_btn",
-      "input_kind": "mouse",
-      "trusted": true,
-      "control_state": "disabled",
-      "test_node_id": "playwright::audit::sim.sensitivity_btn",
-      "sequence_number": 16,
-      "screen_state_id": "audit"
-    },
-    {
-      "control_id": "sim.export_btn",
-      "input_kind": "mouse",
-      "trusted": true,
-      "control_state": "disabled",
-      "test_node_id": "playwright::audit::sim.export_btn",
-      "sequence_number": 17,
-      "screen_state_id": "audit"
-    },
-    {
-      "control_id": "header.theme_toggle",
-      "input_kind": "mouse",
-      "trusted": true,
-      "control_state": "disabled",
-      "test_node_id": "playwright::audit::header.theme_toggle",
-      "sequence_number": 18,
-      "screen_state_id": "audit"
-    },
-    {
-      "control_id": "charts.balances_tab",
-      "input_kind": "mouse",
-      "trusted": true,
-      "control_state": "disabled",
-      "test_node_id": "playwright::audit::charts.balances_tab",
-      "sequence_number": 19,
-      "screen_state_id": "audit"
-    },
-    {
-      "control_id": "charts.networth_tab",
-      "input_kind": "mouse",
-      "trusted": true,
-      "control_state": "disabled",
-      "test_node_id": "playwright::audit::charts.networth_tab",
-      "sequence_number": 20,
-      "screen_state_id": "audit"
-    },
-    {
-      "control_id": "charts.cashflow_tab",
-      "input_kind": "mouse",
-      "trusted": true,
-      "control_state": "disabled",
-      "test_node_id": "playwright::audit::charts.cashflow_tab",
-      "sequence_number": 21,
-      "screen_state_id": "audit"
-    },
-    {
-      "control_id": "charts.analytics_tab",
-      "input_kind": "mouse",
-      "trusted": true,
-      "control_state": "disabled",
-      "test_node_id": "playwright::audit::charts.analytics_tab",
-      "sequence_number": 22,
-      "screen_state_id": "audit"
+      "test_node_id": "playwright::dashboard::workspace.dashboard_tab",
+      "sequence_number": 31,
+      "screen_state_id": "dashboard"
     }
   ]
 }

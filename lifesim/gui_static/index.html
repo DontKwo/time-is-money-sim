@@ -13,11 +13,24 @@
         <img src="/icon.png" alt="Life Money Simulator Icon" width="32" height="32" />
         <div>
           <h1>Life Money Simulator</h1>
-          <p class="subtitle">Deterministic daily cashflow, retirement, Monte Carlo, and sensitivity modeling</p>
+          <p class="subtitle">Deterministic daily cashflow, Scenario Studio, Monte Carlo, and comparison modeling</p>
         </div>
       </div>
 
-      <div class="controls-bar">
+      <nav class="workspace-tabs" aria-label="Primary Workspaces">
+        <button type="button" class="tab-btn active" data-testid="workspace.dashboard_tab">Dashboard</button>
+        <button type="button" class="tab-btn" data-testid="workspace.studio_tab">Scenario Studio</button>
+        <button type="button" class="tab-btn" data-testid="workspace.compare_tab">Compare Scenarios</button>
+        <button type="button" class="btn-secondary" data-testid="header.theme_toggle">Light Theme</button>
+      </nav>
+    </header>
+
+    <div id="statusBanner" class="status-banner" role="status" aria-live="polite">
+      Select a scenario or configure accounts in Scenario Studio to compute balances and projections.
+    </div>
+
+    <main id="panelDashboard" class="workspace-panel">
+      <section class="card controls-bar">
         <label class="control-group" for="scenario.select">
           <span>Scenario</span>
           <select id="scenario.select" data-testid="scenario.select"></select>
@@ -30,51 +43,132 @@
         <button type="button" class="btn-secondary" data-testid="sim.montecarlo_btn">Monte Carlo</button>
         <button type="button" class="btn-secondary" data-testid="sim.sensitivity_btn">Sensitivity</button>
         <button type="button" class="btn-secondary" data-testid="sim.export_btn">Export CSV</button>
-        <button type="button" class="btn-secondary" data-testid="header.theme_toggle">Light Theme</button>
-      </div>
-    </header>
+        <button type="button" class="btn-secondary" data-testid="sim.export_png_btn">Export PNG</button>
+      </section>
 
-    <div id="statusBanner" class="status-banner" role="status" aria-live="polite">
-      Select a scenario and click Run Simulation to compute balances and projections.
-    </div>
+      <section class="kpi-grid" aria-label="Simulation Summary Metrics">
+        <article class="kpi-card">
+          <div class="kpi-label">Ending Net Worth</div>
+          <div id="kpiNetWorth" class="kpi-value">--</div>
+        </article>
+        <article class="kpi-card">
+          <div class="kpi-label">Liquid Net Worth</div>
+          <div id="kpiLiquid" class="kpi-value">--</div>
+        </article>
+        <article class="kpi-card">
+          <div class="kpi-label">Total Debt</div>
+          <div id="kpiDebt" class="kpi-value">--</div>
+        </article>
+        <article class="kpi-card">
+          <div class="kpi-label">Goals Achieved</div>
+          <div id="kpiGoals" class="kpi-value">--</div>
+        </article>
+      </section>
 
-    <section class="kpi-grid" aria-label="Simulation Summary Metrics">
-      <article class="kpi-card">
-        <div class="kpi-label">Ending Net Worth</div>
-        <div id="kpiNetWorth" class="kpi-value">--</div>
-      </article>
-      <article class="kpi-card">
-        <div class="kpi-label">Liquid Net Worth</div>
-        <div id="kpiLiquid" class="kpi-value">--</div>
-      </article>
-      <article class="kpi-card">
-        <div class="kpi-label">Total Debt</div>
-        <div id="kpiDebt" class="kpi-value">--</div>
-      </article>
-      <article class="kpi-card">
-        <div class="kpi-label">Goals Achieved</div>
-        <div id="kpiGoals" class="kpi-value">--</div>
-      </article>
-    </section>
+      <section class="chart-tabs" aria-label="Analytics Views">
+        <button type="button" class="tab-btn active" data-testid="charts.balances_tab">Account Balances</button>
+        <button type="button" class="tab-btn" data-testid="charts.networth_tab">Net Worth Stack</button>
+        <button type="button" class="tab-btn" data-testid="charts.cashflow_tab">Monthly Cashflow</button>
+        <button type="button" class="tab-btn" data-testid="charts.analytics_tab">Monte Carlo / Tornado</button>
+        <button type="button" class="tab-btn" data-testid="charts.comparison_tab">Scenario Comparison</button>
+      </section>
 
-    <section class="chart-tabs" aria-label="Analytics Views">
-      <button type="button" class="tab-btn active" data-testid="charts.balances_tab">Account Balances</button>
-      <button type="button" class="tab-btn" data-testid="charts.networth_tab">Net Worth Stack</button>
-      <button type="button" class="tab-btn" data-testid="charts.cashflow_tab">Monthly Cashflow</button>
-      <button type="button" class="tab-btn" data-testid="charts.analytics_tab">Monte Carlo / Tornado</button>
-    </section>
+      <section class="card chart-card">
+        <img id="chartImage" class="chart-img" alt="Simulation Projection Chart" hidden />
+        <p id="chartEmptyState" class="muted">Charts appear here after running a simulation, Monte Carlo sweep, comparison, or sensitivity analysis.</p>
+      </section>
 
-    <section class="card chart-card">
-      <img id="chartImage" class="chart-img" alt="Simulation Projection Chart" hidden />
-      <p id="chartEmptyState" class="muted">Charts appear here after running a simulation, Monte Carlo sweep, or sensitivity analysis.</p>
-    </section>
+      <section class="card">
+        <h2>Transaction Ledger Preview</h2>
+        <div id="ledgerHost" class="table-wrap">
+          <p class="muted">No ledger rows loaded yet.</p>
+        </div>
+      </section>
+    </main>
 
-    <section class="card">
-      <h2>Transaction Ledger Preview</h2>
-      <div id="ledgerHost" class="table-wrap">
-        <p class="muted">No ledger rows loaded yet.</p>
-      </div>
-    </section>
+    <main id="panelStudio" class="workspace-panel" hidden>
+      <section class="card controls-bar">
+        <label class="control-group" for="studio.start_input">
+          <span>Start Date</span>
+          <input id="studio.start_input" type="date" value="2026-01-01" data-testid="studio.start_input" />
+        </label>
+        <label class="control-group" for="studio.days_input">
+          <span>Horizon (Days)</span>
+          <input id="studio.days_input" type="number" min="30" max="18250" value="365" data-testid="studio.days_input" />
+        </label>
+        <label class="control-group" for="studio.seed_input">
+          <span>Random Seed</span>
+          <input id="studio.seed_input" type="number" min="0" value="42" data-testid="studio.seed_input" />
+        </label>
+        <button type="button" class="btn-secondary" data-testid="studio.load_preset_btn">Load Preset</button>
+        <button type="button" class="btn-secondary" data-testid="studio.import_yaml_btn">Import YAML</button>
+        <input id="studio.yaml_file_input" type="file" accept=".yaml,.yml" class="sr-only-input" data-testid="studio.yaml_file_input" aria-label="Import YAML File" />
+        <button type="button" class="btn-secondary" data-testid="studio.download_yaml_btn">Download YAML</button>
+        <button type="button" class="btn-primary" data-testid="studio.run_custom_btn">Simulate Studio Scenario</button>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <h2>Accounts</h2>
+          <button type="button" class="btn-secondary" data-testid="studio.add_account_btn">Add Account</button>
+        </div>
+        <div id="studioAccountsHost" class="table-wrap"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <h2>Paychecks &amp; 401(k)</h2>
+          <button type="button" class="btn-secondary" data-testid="studio.add_paycheck_btn">Add Paycheck</button>
+        </div>
+        <div id="studioPaychecksHost" class="table-wrap"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <h2>Recurring Cashflows</h2>
+          <button type="button" class="btn-secondary" data-testid="studio.add_flow_btn">Add Flow</button>
+        </div>
+        <div id="studioFlowsHost" class="table-wrap"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <h2>Life Events &amp; Policies</h2>
+          <div class="controls-bar">
+            <button type="button" class="btn-secondary" data-testid="studio.add_event_btn">Add Event</button>
+            <button type="button" class="btn-secondary" data-testid="studio.add_policy_btn">Add Policy</button>
+          </div>
+        </div>
+        <div id="studioEventsHost" class="table-wrap"></div>
+        <div id="studioPoliciesHost" class="table-wrap" style="margin-top: 12px;"></div>
+      </section>
+    </main>
+
+    <main id="panelCompare" class="workspace-panel" hidden>
+      <section class="card">
+        <div class="section-head">
+          <h2>Multi-Scenario Comparison</h2>
+          <button type="button" class="btn-primary" data-testid="compare.run_btn">Run Comparison</button>
+        </div>
+        <div id="compareScenariosHost" class="checkbox-grid"></div>
+        <label class="studio-check-label">
+          <input id="compare.include_studio_toggle" type="checkbox" data-testid="compare.include_studio_toggle" />
+          <span>Include current Scenario Studio configuration</span>
+        </label>
+      </section>
+
+      <section class="card chart-card">
+        <img id="compareChartImage" class="chart-img" alt="Scenario Comparison Chart" hidden />
+        <p id="compareEmptyState" class="muted">Select two or more scenarios and click Run Comparison to overlay net worth trajectories.</p>
+      </section>
+
+      <section class="card">
+        <h2>Comparison Summary Table</h2>
+        <div id="compareTableHost" class="table-wrap">
+          <p class="muted">No comparison run yet.</p>
+        </div>
+      </section>
+    </main>
   </div>
   <script src="/app.js"></script>
 </body>

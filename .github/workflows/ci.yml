@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - "v*"
   pull_request:
     branches:
       - main
@@ -52,15 +54,19 @@ jobs:
         run: |
           import os, re, subprocess
           subprocess.run(["git", "fetch", "--tags", "--force"], check=False)
-          raw_tags = subprocess.check_output(["git", "tag", "--list", "v*"], text=True).splitlines()
-          semvers = []
-          for t in raw_tags:
-              m = re.match(r"^v?(\d+)\.(\d+)\.(\d+)$", t.strip())
-              if m:
-                  semvers.append(tuple(int(x) for x in m.groups()))
-          base = max(semvers) if semvers else (0, 1, 0)
-          next_ver = (base[0], base[1], base[2] + 1) if f"v{base[0]}.{base[1]}.{base[2]}" in raw_tags else base
-          ver_str = f"{next_ver[0]}.{next_ver[1]}.{next_ver[2]}"
+          ref = os.environ.get("GITHUB_REF", "")
+          if ref.startswith("refs/tags/v"):
+              ver_str = ref[len("refs/tags/v"):]
+          else:
+              raw_tags = subprocess.check_output(["git", "tag", "--list", "v*"], text=True).splitlines()
+              semvers = []
+              for t in raw_tags:
+                  m = re.match(r"^v?(\d+)\.(\d+)\.(\d+)$", t.strip())
+                  if m:
+                      semvers.append(tuple(int(x) for x in m.groups()))
+              base = max(semvers) if semvers else (0, 1, 0)
+              next_ver = (base[0], base[1], base[2] + 1) if f"v{base[0]}.{base[1]}.{base[2]}" in raw_tags else base
+              ver_str = f"{next_ver[0]}.{next_ver[1]}.{next_ver[2]}"
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
               f.write(f"version={ver_str}\ntag=v{ver_str}\n")
           print(f"Resolved version v{ver_str}")
@@ -162,7 +168,7 @@ jobs:
 
   release:
     needs: [lint-and-test, build-windows, build-macos, build-linux]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     permissions:
       contents: write
     runs-on: ubuntu-latest

@@ -10,7 +10,9 @@ Install and run Life Money Simulator without Python or command-line tools.
 
 ---
 
-## Windows
+## Platform Installation Instructions
+
+### Windows
 
 1. Download `TimeIsMoneySim-Windows.exe` from [Latest Releases](https://github.com/DontKwo/time-is-money-sim/releases/latest).
 2. Double-click `TimeIsMoneySim-Windows.exe` to open the desktop application.
@@ -19,9 +21,7 @@ Install and run Life Money Simulator without Python or command-line tools.
    - Confirm the download came from `DontKwo/time-is-money-sim`, then click **Run anyway** at your own discretion.
 4. Alternative unblock method: Right-click `TimeIsMoneySim-Windows.exe` -> **Properties** -> check **Unblock** under Security -> click **Apply** and **OK**.
 
----
-
-## macOS
+### macOS
 
 1. Download `TimeIsMoneySim-macOS.zip` from [Latest Releases](https://github.com/DontKwo/time-is-money-sim/releases/latest).
 2. Unzip the archive and drag **`TimeIsMoneySim.app`** into **Applications**.
@@ -30,9 +30,7 @@ Install and run Life Money Simulator without Python or command-line tools.
    - Open **System Settings** -> **Privacy & Security** -> **Security** -> click **Open Anyway** and confirm with your password or Touch ID.
 4. Developer Terminal Alternative: run `xattr -cr /Applications/TimeIsMoneySim.app`, then launch normally.
 
----
-
-## Linux
+### Linux
 
 1. Download `TimeIsMoneySim-Linux.tar.gz` from [Latest Releases](https://github.com/DontKwo/time-is-money-sim/releases/latest).
 2. Extract the archive (`tar -xzf TimeIsMoneySim-Linux.tar.gz`).
