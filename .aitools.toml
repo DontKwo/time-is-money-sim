@@ -1,0 +1,8 @@
+[linter]
+profile = "strict"
+level = "strict"
+diff_only = true
+ui_evidence = "tests/ui_evidence.json"
+
+[ui]
+frameworks = ["web"]

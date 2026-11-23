@@ -2,7 +2,7 @@
 
 Scenarios are configured in YAML.
 
-### Scenario Horizon & Includes
+## Scenario horizon and includes
 
 ```yaml
 start: 2026-01-01
@@ -233,3 +233,12 @@ goals:
     real_return_assumption: 0.05
     swr: 0.04
 ```
+
+## Related Documentation
+
+- [Project Overview](../README.md)
+- [User Guide](USER_GUIDE.md)
+- [Frequently Asked Questions](FAQ.md)
+- [System Architecture](ARCHITECTURE.md)
+- [Developer Guide](DEVELOPMENT.md)
+- [Security Policy](../SECURITY.md)

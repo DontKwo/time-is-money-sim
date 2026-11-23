@@ -1,0 +1,6 @@
+[project]
+frameworks = ["web"]
+id_pattern = "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+
+[tests]
+evidence = "tests/ui_evidence.json"

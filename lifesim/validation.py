@@ -13,7 +13,7 @@ def validate_scenario_yaml(file_path: str) -> list[str]:
         errors.append(f"YAML parsing error: {err}")
     except pydantic.ValidationError as err:
         for error in err.errors():
-            loc = ".".join(str(l) for l in error["loc"])
+            loc = ".".join(str(segment) for segment in error["loc"])
             msg = error["msg"]
             errors.append(f"{loc}: {msg}")
     except ValueError as err:

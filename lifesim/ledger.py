@@ -44,7 +44,7 @@ class Ledger:
         indices = self.inflation_indices
         if base_date is not None and base_date in indices:
             base_factor = indices[base_date]
-            indices = {dt: (val / base_factor) for dt, val in indices.items()}
+            indices = {dt: (idx_factor / base_factor) for dt, idx_factor in indices.items()}
         deflated_records = deflate_daily_records(self.daily_records, indices)
         return pd.DataFrame(deflated_records)
 

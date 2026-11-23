@@ -207,7 +207,7 @@ def main() -> None:
                 print("Error: --sensitivity grid requires a parameter name and at least one value.")
                 sys.exit(1)
             param_name = args.sensitivity[0]
-            values = [float(val) for val in args.sensitivity[1:]]
+            values = [float(raw_val) for raw_val in args.sensitivity[1:]]
             from lifesim.sensitivity import run_sensitivity_grid
             grid_df = run_sensitivity_grid(args.scenario, param_name, values)
             print("Sensitivity Grid Results:")

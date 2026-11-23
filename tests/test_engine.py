@@ -467,14 +467,11 @@ def test_rmd_calculation_and_withdrawal():
     ledger = run(scenario)
     df = ledger.to_df()
 
-    # RMD should occur on Dec 1st.
-    # In 2021, age is 71 -> No RMD
+    # RMD statutory age 72 begins in 2022; age 71 (2021) has no withdrawal.
     rmd_2021 = df[(df['date'] == date(2021, 12, 1)) & (df['category'] == 'rmd')]
     assert len(rmd_2021) == 0
 
-    # In 2022, age is 72. RMD statutory age reached.
-    # Prior year balance is 27400 (from Jan 1 start because no growth).
-    # Age 72 factor is 27.4. RMD = 27400 / 27.4 = 1000.
+    # At age 72 with factor 27.4 on 27400 balance, expected RMD is 1000.00.
     rmd_2022 = df[(df['date'] == date(2022, 12, 1)) & (df['category'] == 'rmd')]
     assert len(rmd_2022) == 2 # withdrawal and deposit
 
@@ -489,16 +486,14 @@ def test_rmd_calculation_and_withdrawal():
     assert deposit_2022['account'] == 'checking'
     assert deposit_2022['balance'] == 2000.0
 
-    # In 2023, age is 73. Factor is 26.5.
-    # Prior year balance is 26400. RMD = 26400 / 26.5 = 996.226... -> 996.23
-    # Actually it's 2640000 cents / 26.5 = 99622.641... => 99623 cents -> 996.23
+    # At age 73 with factor 26.5 on 26400 balance, expected RMD rounds to 996.23.
     rmd_2023 = df[(df['date'] == date(2023, 12, 1)) & (df['category'] == 'rmd')]
     assert len(rmd_2023) == 2
 
     withdrawal_2023 = rmd_2023[rmd_2023['amount'] < 0].iloc[0]
     assert pytest.approx(withdrawal_2023['amount'], abs=0.01) == -996.23
 
-def test_rmd_disabled():
+def test_rmd_disabled() -> None:
     scenario = ScenarioModel(
         start=date(2022, 1, 1),
         days=365,
@@ -517,4 +512,4 @@ def test_rmd_disabled():
         rmd_tx = df[df['category'] == 'rmd']
         assert len(rmd_tx) == 0
     else:
-        assert True
+        assert df.empty

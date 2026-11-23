@@ -1,47 +1,28 @@
-# User Guide: Life Money Simulator
+# User Guide
 
-Welcome to the Life Money Simulator! This guide will walk you through how to use the simulator, adjust simulation parameters, and interpret the outputs.
+Life Money Simulator models daily cashflows, retirement accounts, credit cards, amortized loans, taxes, waterfall savings policies, Monte Carlo uncertainty, and sensitivity sweeps locally on your computer.
 
-## 1. Running Simulations
+## Desktop Application Workflow
 
-You can run simulations from your terminal using `uv` (a fast Python package installer and runner). The basic command takes a scenario YAML file and produces a ledger and charts.
+1. Launch **TimeIsMoneySim** (see [Desktop Installation Guide](INSTALLATION.md) if your operating system prompts for verification).
+2. **Choose a Scenario**: Pick a built-in template (such as `example_mvp.yaml`, `example_401k_match.yaml`, `example_debt_payoff.yaml`, or `example_fire_lifecycle.yaml`) from the **Scenario Studio** selector.
+3. **Adjust Horizon & Inflation**: Override the number of days or inflation rate right in the top bar without editing YAML files manually.
+4. **Run Simulation, Monte Carlo, or Sensitivity**:
+   - **Run Simulation**: Calculates ending net worth, liquid assets, total debt, goal attainment, account balance curves, and monthly cashflow charts.
+   - **Monte Carlo**: Runs stochastic market trials and plots p5 through p95 fan bands.
+   - **Sensitivity Sweep**: Measures net worth upside and downside across key financial levers on a tornado chart.
+5. **Export Data**: Download the simulated transaction ledger as CSV for external inspection.
 
-```bash
-uv run --no-project python -m lifesim scenarios/example_mvp.yaml
-```
+## Financial Disclaimer
 
-**Common Flags:**
-- `--out-daily <file.csv>`: Export a daily snapshot of account balances.
-- `--out-summary <file.json>`: Export simulation summary analytics to JSON.
-- `--charts-dir <dir>`: Generate charts (balances, net worth) and save them to a directory.
-- `--compare <scenario.yaml>`: Compare your base scenario against an alternative.
-- `--sensitivity`: Run a sensitivity sweep to see which parameters most affect outcomes.
-- `--monte-carlo <N>`: Run N probabilistic simulations to show variance.
-- `--out-html <file.html>`: Generate an interactive, self-contained HTML report.
+Life Money Simulator is an educational modeling tool only. Verify outputs independently before making personal financial or tax decisions.
 
-## 2. Adjusting Parameters
+## Related Documentation
 
-Scenarios are built using YAML files. You can edit the YAML files directly or use runtime overrides.
-
-### Runtime Overrides
-To quickly test a change without modifying the YAML file, use `--set`:
-```bash
-uv run --no-project python -m lifesim scenarios/example_mvp.yaml --set paychecks.0.annual_salary=85000.0
-```
-
-### Modifying the YAML
-Open the `.yaml` file in any text editor. Key areas to adjust:
-- **`paychecks`**: Modify your `annual_salary`, 401(k) contribution rates (`traditional_pct`), and employer match details.
-- **`accounts`**: Update your starting balances (`balance`), debt interest rates (`apr`), or investment returns (`expected_return`).
-- **`flows`**: Add custom recurring expenses or incomes using various schedules (e.g., `monthly`, `weekly`).
-- **`events`**: Plan major life events, such as buying a house or a car, which might change your monthly flows.
-
-## 3. Interpreting Outputs
-
-The simulator produces several types of outputs:
-- **CLI Table**: A quick ASCII summary showing final net worth, liquid cash, and debt.
-- **Ledger (`ledger.csv`)**: An exact transaction history detailing every flow on every day. Note that financial amounts are internally processed in integer cents but stored as dollar amounts in the ledger.
-- **Charts**: Step-function charts showing account balances over time. Investments might show volatility based on the configured statistical distributions.
-- **HTML Report**: If you used `--out-html`, open the file in your browser for an interactive deep dive into cashflows and net worth progression.
-
-Experiment with different savings rates, debt payoff strategies (like `avalanche` vs. `snowball`), and market conditions to see how they impact your long-term financial health!
+- [Project Overview](../README.md)
+- [Desktop Installation Guide](INSTALLATION.md)
+- [Configuration Reference](CONFIG_REFERENCE.md)
+- [Frequently Asked Questions](FAQ.md)
+- [System Architecture](ARCHITECTURE.md)
+- [Developer Guide](DEVELOPMENT.md)
+- [Security Policy](../SECURITY.md)

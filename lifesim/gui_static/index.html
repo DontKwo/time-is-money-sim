@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Life Money Simulator</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <img src="/icon.png" alt="Life Money Simulator Icon" width="32" height="32" />
+        <div>
+          <h1>Life Money Simulator</h1>
+          <p class="subtitle">Deterministic daily cashflow, retirement, Monte Carlo, and sensitivity modeling</p>
+        </div>
+      </div>
+
+      <div class="controls-bar">
+        <label class="control-group" for="scenario.select">
+          <span>Scenario</span>
+          <select id="scenario.select" data-testid="scenario.select"></select>
+        </label>
+        <label class="control-group" for="scenario.days_input">
+          <span>Days</span>
+          <input id="scenario.days_input" type="number" min="30" max="18250" value="365" data-testid="scenario.days_input" />
+        </label>
+        <button type="button" class="btn-primary" data-testid="sim.run_btn">Run Simulation</button>
+        <button type="button" class="btn-secondary" data-testid="sim.montecarlo_btn">Monte Carlo</button>
+        <button type="button" class="btn-secondary" data-testid="sim.sensitivity_btn">Sensitivity</button>
+        <button type="button" class="btn-secondary" data-testid="sim.export_btn">Export CSV</button>
+        <button type="button" class="btn-secondary" data-testid="header.theme_toggle">Light Theme</button>
+      </div>
+    </header>
+
+    <div id="statusBanner" class="status-banner" role="status" aria-live="polite">
+      Select a scenario and click Run Simulation to compute balances and projections.
+    </div>
+
+    <section class="kpi-grid" aria-label="Simulation Summary Metrics">
+      <article class="kpi-card">
+        <div class="kpi-label">Ending Net Worth</div>
+        <div id="kpiNetWorth" class="kpi-value">--</div>
+      </article>
+      <article class="kpi-card">
+        <div class="kpi-label">Liquid Net Worth</div>
+        <div id="kpiLiquid" class="kpi-value">--</div>
+      </article>
+      <article class="kpi-card">
+        <div class="kpi-label">Total Debt</div>
+        <div id="kpiDebt" class="kpi-value">--</div>
+      </article>
+      <article class="kpi-card">
+        <div class="kpi-label">Goals Achieved</div>
+        <div id="kpiGoals" class="kpi-value">--</div>
+      </article>
+    </section>
+
+    <section class="chart-tabs" aria-label="Analytics Views">
+      <button type="button" class="tab-btn active" data-testid="charts.balances_tab">Account Balances</button>
+      <button type="button" class="tab-btn" data-testid="charts.networth_tab">Net Worth Stack</button>
+      <button type="button" class="tab-btn" data-testid="charts.cashflow_tab">Monthly Cashflow</button>
+      <button type="button" class="tab-btn" data-testid="charts.analytics_tab">Monte Carlo / Tornado</button>
+    </section>
+
+    <section class="card chart-card">
+      <img id="chartImage" class="chart-img" alt="Simulation Projection Chart" hidden />
+      <p id="chartEmptyState" class="muted">Charts appear here after running a simulation, Monte Carlo sweep, or sensitivity analysis.</p>
+    </section>
+
+    <section class="card">
+      <h2>Transaction Ledger Preview</h2>
+      <div id="ledgerHost" class="table-wrap">
+        <p class="muted">No ledger rows loaded yet.</p>
+      </div>
+    </section>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+name: CI & Release
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Time Is Money Sim
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - name: Clone ai-dev-tools
+        shell: bash
+        run: git clone --depth 1 https://github.com/DontKwo/ai-dev-tools.git "${{ runner.temp }}/_aitools"
+
+      - name: Install Python Dependencies
+        run: uv sync --dev
+
+      - name: Run Strict Linter and Link Check
+        shell: bash
+        run: |
+          if ! uv run --no-project python "${{ runner.temp }}/_aitools/scripts/claudemd_linter.py" . --level strict --full --no-cache; then
+            cat "${{ runner.temp }}/_aitools/scripts"/lint_report_*.txt || true
+            exit 1
+          fi
+          uv run --no-project python "${{ runner.temp }}/_aitools/scripts/link_checker.py" .
+
+      - name: Run Full Pytest Suite
+        run: uv run python -m pytest -q
+
+      - name: Compute Next SemVer Release Version
+        id: ver
+        shell: python
+        run: |
+          import os, re, subprocess
+          subprocess.run(["git", "fetch", "--tags", "--force"], check=False)
+          raw_tags = subprocess.check_output(["git", "tag", "--list", "v*"], text=True).splitlines()
+          semvers = []
+          for t in raw_tags:
+              m = re.match(r"^v?(\d+)\.(\d+)\.(\d+)$", t.strip())
+              if m:
+                  semvers.append(tuple(int(x) for x in m.groups()))
+          base = max(semvers) if semvers else (0, 1, 0)
+          next_ver = (base[0], base[1], base[2] + 1) if f"v{base[0]}.{base[1]}.{base[2]}" in raw_tags else base
+          ver_str = f"{next_ver[0]}.{next_ver[1]}.{next_ver[2]}"
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"version={ver_str}\ntag=v{ver_str}\n")
+          print(f"Resolved version v{ver_str}")
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      tag: ${{ steps.ver.outputs.tag }}
+
+  build-windows:
+    needs: lint-and-test
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Dependencies and Run Tests
+        run: |
+          uv sync --dev
+          uv run python -m pytest -q
+
+      - name: Package Windows Standalone Executable and Self-Test
+        run: |
+          uv run python -m PyInstaller --noconfirm --clean --onefile --windowed --icon=assets/icon.ico --name TimeIsMoneySim-Windows --workpath build/pyi-work --distpath build/pyi-dist --add-data "lifesim/gui_static;lifesim/gui_static" --add-data "scenarios;scenarios" --add-data "defaults;defaults" --add-data "assets;assets" lifesim/gui.py
+          .\build\pyi-dist\TimeIsMoneySim-Windows.exe --self-test | Out-Host
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          mkdir -Force release-assets | Out-Null
+          Copy-Item build\pyi-dist\TimeIsMoneySim-Windows.exe release-assets\TimeIsMoneySim-Windows.exe
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-package
+          path: release-assets/TimeIsMoneySim-Windows.exe
+
+  build-macos:
+    needs: lint-and-test
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Dependencies and Run Tests
+        run: |
+          uv sync --dev
+          uv run python -m pytest -q
+
+      - name: Package macOS Bundle and Self-Test
+        run: |
+          uv run python -m PyInstaller --noconfirm --clean --onefile --windowed --icon=assets/icon.ico --name TimeIsMoneySim --workpath build/pyi-work --distpath build/pyi-dist --add-data "lifesim/gui_static:lifesim/gui_static" --add-data "scenarios:scenarios" --add-data "defaults:defaults" --add-data "assets:assets" lifesim/gui.py
+          ./build/pyi-dist/TimeIsMoneySim.app/Contents/MacOS/TimeIsMoneySim --self-test
+          mkdir -p release-assets
+          (cd build/pyi-dist && zip -r ../../release-assets/TimeIsMoneySim-macOS.zip TimeIsMoneySim.app)
+
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-package
+          path: release-assets/TimeIsMoneySim-macOS.zip
+
+  build-linux:
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Dependencies and Run Tests
+        run: |
+          uv sync --dev
+          uv run python -m pytest -q
+
+      - name: Package Linux Binary and Self-Test
+        run: |
+          uv run python -m PyInstaller --noconfirm --clean --onefile --name TimeIsMoneySim-Linux --workpath build/pyi-work --distpath build/pyi-dist --add-data "lifesim/gui_static:lifesim/gui_static" --add-data "scenarios:scenarios" --add-data "defaults:defaults" --add-data "assets:assets" lifesim/gui.py
+          chmod +x build/pyi-dist/TimeIsMoneySim-Linux
+          ./build/pyi-dist/TimeIsMoneySim-Linux --self-test
+          mkdir -p release-assets
+          tar -czf release-assets/TimeIsMoneySim-Linux.tar.gz -C build/pyi-dist TimeIsMoneySim-Linux
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-package
+          path: release-assets/TimeIsMoneySim-Linux.tar.gz
+
+  release:
+    needs: [lint-and-test, build-windows, build-macos, build-linux]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Release Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.lint-and-test.outputs.tag }}
+          name: TimeIsMoneySim ${{ needs.lint-and-test.outputs.tag }}
+          prerelease: false
+          make_latest: "true"
+          generate_release_notes: true
+          files: |
+            artifacts/windows-package/TimeIsMoneySim-Windows.exe
+            artifacts/macos-package/TimeIsMoneySim-macOS.zip
+            artifacts/linux-package/TimeIsMoneySim-Linux.tar.gz

@@ -347,27 +347,19 @@ def test_aca_subsidy_above_400_fpl_returns_zero() -> None:
 
 
 def test_aca_subsidy_at_100_fpl() -> None:
-    # MAGI = $15,000, FPL = $15,000 (FPL pct = 1.0)
-    # Expected pct = 0.02. Contribution = $15,000 * 0.02 = $300
-    # Subsidy = max(0, $5,000 - $300) = $4,700
+    # MAGI $15k / FPL $15k -> 2% contribution ($300), subsidy $4,700.
     subsidy_cents = calc_aca_premium_tax_credit(1_500_000, 1_500_000, 500_000)
     assert subsidy_cents == 470_000
 
 
 def test_aca_subsidy_at_250_fpl() -> None:
-    # MAGI = $37,500, FPL = $15,000 (FPL pct = 2.5)
-    # Expected pct = 0.02 + 0.025 * 1.5 = 0.0575
-    # Contribution = $37,500 * 0.0575 = $2,156.25 ($2,156)
-    # Subsidy = max(0, $5,000 - $2,156) = $2,844
+    # MAGI $37.5k / FPL $15k -> 5.75% contribution ($2,156.25), subsidy $2,843.75.
     subsidy_cents = calc_aca_premium_tax_credit(3_750_000, 1_500_000, 500_000)
     assert subsidy_cents == 284_375
 
 
 def test_aca_subsidy_at_400_fpl() -> None:
-    # MAGI = $60,000, FPL = $15,000 (FPL pct = 4.0)
-    # Expected pct = 0.02 + 0.025 * 3.0 = 0.095
-    # Contribution = $60,000 * 0.095 = $5,700
-    # Subsidy = max(0, $5,000 - $5,700) = 0
+    # MAGI $60k / FPL $15k -> 9.5% cap contribution ($5,700) exceeds benchmark.
     subsidy_cents = calc_aca_premium_tax_credit(6_000_000, 1_500_000, 500_000)
     assert subsidy_cents == 0
 

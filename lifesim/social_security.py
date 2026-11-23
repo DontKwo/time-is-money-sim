@@ -18,10 +18,14 @@ def calculate_claiming_multiplier(claiming_age: float, fra: float = 67.0) -> flo
         return 1.0
     elif claiming_age < fra:
         months_early = (fra - claiming_age) * 12
+        early_rate_36 = 5.0 / 9.0 / 100.0
+        early_rate_over_36 = 5.0 / 12.0 / 100.0
         if months_early <= 36:
-            return 1.0 - (months_early * (5.0 / 9.0 / 100.0))
+            return 1.0 - months_early * early_rate_36
         else:
-            return 1.0 - (36.0 * (5.0 / 9.0 / 100.0)) - ((months_early - 36.0) * (5.0 / 12.0 / 100.0))
+            max_first_tier = 36.0 * early_rate_36
+            extra_months = months_early - 36.0
+            return 1.0 - max_first_tier - extra_months * early_rate_over_36
     else:
         years_delayed = min(claiming_age, 70.0) - fra
         if years_delayed > 0:
@@ -50,10 +54,7 @@ def calculate_taxable_benefits_cents(
         )
     else:
         part1 = int(round(0.85 * (provisional_income_cents - base2_cents)))
-        part2 = min(
-            int(round(0.5 * ss_benefits_cents)),
-            int(round(0.5 * (base2_cents - base1_cents)))
-        )
+        part2 = min(int(round(0.5 * ss_benefits_cents)), int(round(0.5 * (base2_cents - base1_cents))))
         return min(
             int(round(0.85 * ss_benefits_cents)),
             part1 + part2

@@ -1,0 +1,205 @@
+{
+  "run_id": "timeismoneysim-playwright-edge",
+  "framework": "web",
+  "commit": "HEAD",
+  "interactions": [
+    {
+      "control_id": "scenario.select",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::scenario.select",
+      "sequence_number": 1,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "scenario.days_input",
+      "input_kind": "keyboard",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::scenario.days_input",
+      "sequence_number": 2,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "sim.run_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::sim.run_btn",
+      "sequence_number": 3,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "charts.networth_tab",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::charts::charts.networth_tab",
+      "sequence_number": 4,
+      "screen_state_id": "charts"
+    },
+    {
+      "control_id": "charts.cashflow_tab",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::charts::charts.cashflow_tab",
+      "sequence_number": 5,
+      "screen_state_id": "charts"
+    },
+    {
+      "control_id": "charts.balances_tab",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::charts::charts.balances_tab",
+      "sequence_number": 6,
+      "screen_state_id": "charts"
+    },
+    {
+      "control_id": "sim.montecarlo_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::sim.montecarlo_btn",
+      "sequence_number": 7,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "charts.analytics_tab",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::charts::charts.analytics_tab",
+      "sequence_number": 8,
+      "screen_state_id": "charts"
+    },
+    {
+      "control_id": "sim.sensitivity_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::sim.sensitivity_btn",
+      "sequence_number": 9,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "header.theme_toggle",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::header::header.theme_toggle",
+      "sequence_number": 10,
+      "screen_state_id": "header"
+    },
+    {
+      "control_id": "sim.export_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "enabled",
+      "test_node_id": "playwright::studio::sim.export_btn",
+      "sequence_number": 11,
+      "screen_state_id": "studio"
+    },
+    {
+      "control_id": "scenario.select",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "disabled",
+      "test_node_id": "playwright::audit::scenario.select",
+      "sequence_number": 12,
+      "screen_state_id": "audit"
+    },
+    {
+      "control_id": "scenario.days_input",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "disabled",
+      "test_node_id": "playwright::audit::scenario.days_input",
+      "sequence_number": 13,
+      "screen_state_id": "audit"
+    },
+    {
+      "control_id": "sim.run_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "disabled",
+      "test_node_id": "playwright::audit::sim.run_btn",
+      "sequence_number": 14,
+      "screen_state_id": "audit"
+    },
+    {
+      "control_id": "sim.montecarlo_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "disabled",
+      "test_node_id": "playwright::audit::sim.montecarlo_btn",
+      "sequence_number": 15,
+      "screen_state_id": "audit"
+    },
+    {
+      "control_id": "sim.sensitivity_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "disabled",
+      "test_node_id": "playwright::audit::sim.sensitivity_btn",
+      "sequence_number": 16,
+      "screen_state_id": "audit"
+    },
+    {
+      "control_id": "sim.export_btn",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "disabled",
+      "test_node_id": "playwright::audit::sim.export_btn",
+      "sequence_number": 17,
+      "screen_state_id": "audit"
+    },
+    {
+      "control_id": "header.theme_toggle",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "disabled",
+      "test_node_id": "playwright::audit::header.theme_toggle",
+      "sequence_number": 18,
+      "screen_state_id": "audit"
+    },
+    {
+      "control_id": "charts.balances_tab",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "disabled",
+      "test_node_id": "playwright::audit::charts.balances_tab",
+      "sequence_number": 19,
+      "screen_state_id": "audit"
+    },
+    {
+      "control_id": "charts.networth_tab",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "disabled",
+      "test_node_id": "playwright::audit::charts.networth_tab",
+      "sequence_number": 20,
+      "screen_state_id": "audit"
+    },
+    {
+      "control_id": "charts.cashflow_tab",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "disabled",
+      "test_node_id": "playwright::audit::charts.cashflow_tab",
+      "sequence_number": 21,
+      "screen_state_id": "audit"
+    },
+    {
+      "control_id": "charts.analytics_tab",
+      "input_kind": "mouse",
+      "trusted": true,
+      "control_state": "disabled",
+      "test_node_id": "playwright::audit::charts.analytics_tab",
+      "sequence_number": 22,
+      "screen_state_id": "audit"
+    }
+  ]
+}

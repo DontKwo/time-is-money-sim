@@ -6,11 +6,29 @@ build-backend = "hatchling.build"
 name = "time-is-money-sim"
 version = "0.1.0"
 authors = [
-  { name="DontKwo", email="dontkwo@example.com" },
+  { name = "DontKwo", email = "323857007+DontKwo@users.noreply.github.com" },
 ]
-description = "A daily-tick personal finance simulator in Python."
+description = "A daily-tick personal finance simulator and WebView desktop application."
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "GPL-3.0-or-later" }
+license = "MIT"
+dependencies = [
+  "matplotlib>=3.10.0",
+  "numpy>=2.2.0",
+  "pandas>=2.2.0",
+  "pydantic>=2.10.0",
+  "PyYAML>=6.0.0",
+  "pillow>=11.0.0",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.0.0",
+  "pyinstaller>=6.0.0",
+]
+
+[project.scripts]
+lifesim-gui = "lifesim.gui:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["lifesim"]
