@@ -25,7 +25,7 @@ Browse release notes on [All Releases](https://github.com/DontKwo/time-is-money-
 ## Screenshots
 
 <p align="center">
-  <img src="assets/screenshots/01_main.png" alt="Life Money Simulator Scenario Studio" width="760" />
+  <img src="assets/screenshots/01_main.png" alt="Life Money Simulator Dashboard" width="760" />
 </p>
 
 <p align="center">
@@ -38,27 +38,18 @@ Browse release notes on [All Releases](https://github.com/DontKwo/time-is-money-
 
 1. **Download the app** from the table above for Windows, macOS, or Linux.
 2. **Open the desktop window** following [Desktop Installation Guide](docs/INSTALLATION.md) if prompted by your operating system.
-3. **Choose a scenario template** (MVP, 401k Match, Debt Payoff, or FIRE Lifecycle) and set your projection horizon in days.
-4. **Click Run Simulation, Monte Carlo, or Sensitivity** to inspect balance curves, cashflows, fan charts, and downloadable transaction ledgers.
+3. **Run & Explore on the Dashboard**: Pick a scenario template (`MVP`, `401k Match`, `Debt Payoff`, or `FIRE Lifecycle`) or click **Monte Carlo** and **Sensitivity**, then export CSV ledgers or chart PNGs anytime.
+4. **Customize in Scenario Studio & Compare**: Build custom accounts, paychecks, flows, and life events visually in **Scenario Studio**, or benchmark two strategies side by side under **Compare Scenarios**.
 
 ---
 
 ## Key Features
 
 - **Daily Calendar Accuracy**: Processes paychecks, taxes, credit cycles, loans, and compound returns day by day.
-- **Deterministic Reproducibility**: Isolated seed streams let you toggle individual cashflows cleanly without random noise shifts.
+- **Visual Scenario Studio & Side-by-Side Comparison**: Edit financial scenarios without hand-writing YAML and compare multiple strategies against deterministic seeds.
 - **Monte Carlo & Sensitivity**: Visualize probability bands across market paths and identify high-leverage savings choices.
-- **Offline CSV Exports**: Export transaction ledgers locally for spreadsheet analysis.
+- **Offline CSV & Chart PNG Exports**: Export transaction ledgers and charts locally with complete offline privacy.
 - **Open Source**: Transparent simulation code under the [MIT License](LICENSE).
-
----
-
-## Safety & Disclaimers
-
-- **Financial Disclaimer**: Life Money Simulator is an educational personal finance model. It does not provide financial, investment, tax, legal, or retirement advice. Verify outputs independently before making financial decisions.
-- **Official `main` Releases Only**: Only download executables from [DontKwo/time-is-money-sim](https://github.com/DontKwo/time-is-money-sim/releases/latest) (`main` branch). Never download forked builds unless you have verified they contain no malware; only official `main` releases are maintained by the author, and I make no promises.
-- **OS Security Warnings**: Windows SmartScreen and macOS Gatekeeper may flag unsigned open-source builds as unrecognized or unsafe. Bypassing prompts is strictly at your own discretion; see [Desktop Installation Guide](docs/INSTALLATION.md).
-- **AS-IS Disclaimer**: Provided "AS IS" under the [MIT License](LICENSE) with zero warranty or liability. Use at your own risk.
 
 ---
 
@@ -74,7 +65,7 @@ Browse release notes on [All Releases](https://github.com/DontKwo/time-is-money-
 - [Developer Guide](docs/DEVELOPMENT.md)
 - [Developer uv Installation](docs/UV_INSTALLATION.md)
 
-### AI, Mathematical Proof & Technical Documentation
+### AI & Technical Documentation
 - [AI Agent Rules](AGENTS.md)
 - [System Architecture](docs/ARCHITECTURE.md)
 
@@ -82,3 +73,12 @@ Browse release notes on [All Releases](https://github.com/DontKwo/time-is-money-
 - [Security Policy](SECURITY.md)
 - [Third-Party Notices](THIRD_PARTY_NOTICES.md)
 - [MIT License](LICENSE)
+
+---
+
+## Safety & Disclaimers
+
+- **Financial Disclaimer**: Life Money Simulator is an educational personal finance model. It does not provide financial, investment, tax, legal, or retirement advice. Verify outputs independently before making financial decisions.
+- **Official `main` Releases Only**: Only download executables from [DontKwo/time-is-money-sim](https://github.com/DontKwo/time-is-money-sim/releases/latest) (`main` branch). Never download forked builds unless you have verified they contain no malware; only official `main` releases are maintained by the author, and I make no promises.
+- **OS Security Warnings**: Windows SmartScreen and macOS Gatekeeper may flag unsigned open-source builds as unrecognized or unsafe. Bypassing prompts is strictly at your own discretion; see [Desktop Installation Guide](docs/INSTALLATION.md).
+- **AS-IS Disclaimer**: Provided "AS IS" under the [MIT License](LICENSE) with zero warranty or liability. Use at your own risk.

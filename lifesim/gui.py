@@ -68,13 +68,13 @@ def find_chromium_browser() -> str | None:
                 return candidate
 
     posix_candidates = [
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-        "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-        "msedge",
-        "microsoft-edge",
         "google-chrome",
         "chromium",
         "chromium-browser",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "msedge",
+        "microsoft-edge",
+        "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
     ]
     for candidate in posix_candidates:
         if os.path.sep in candidate:
@@ -508,6 +508,10 @@ def capture_screenshot(base_url: str, output_png: Path) -> None:
                 "--headless=new",
                 "--disable-gpu",
                 "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-background-networking",
+                "--no-first-run",
+                "--no-default-browser-check",
                 "--hide-scrollbars",
                 "--virtual-time-budget=2500",
                 f"--user-data-dir={profile_dir}",

@@ -2,12 +2,6 @@
 
 Install and run Life Money Simulator without Python or command-line tools.
 
-## Safety & Authenticity Warning
-
-- **Official `main` Releases Only**: Download Life Money Simulator exclusively from [DontKwo/time-is-money-sim Releases](https://github.com/DontKwo/time-is-money-sim/releases/latest).
-- **Fork Warning**: Never download builds from forked repositories unless you have verified the source code yourself and know they do not contain malware. Only official `main` releases are maintained by the author, and I make no promises.
-- **Bypassing Security Prompts**: Because independent open-source executables do not carry paid commercial signing certificates, Windows and macOS will warn that the app is unrecognized or potentially unsafe. Bypassing these warnings is strictly at your own discretion, and the software is provided "AS IS" with zero liability.
-
 ---
 
 ## Platform Installation Instructions
@@ -35,6 +29,14 @@ Install and run Life Money Simulator without Python or command-line tools.
 1. Download `TimeIsMoneySim-Linux.tar.gz` from [Latest Releases](https://github.com/DontKwo/time-is-money-sim/releases/latest).
 2. Extract the archive (`tar -xzf TimeIsMoneySim-Linux.tar.gz`).
 3. Ensure executable permissions (`chmod +x TimeIsMoneySim-Linux`) and launch the binary.
+
+---
+
+## Safety & Authenticity Warning
+
+- **Official `main` Releases Only**: Download Life Money Simulator exclusively from [DontKwo/time-is-money-sim Releases](https://github.com/DontKwo/time-is-money-sim/releases/latest).
+- **Fork Warning**: Never download builds from forked repositories unless you have verified the source code yourself and know they do not contain malware. Only official `main` releases are maintained by the author, and I make no promises.
+- **Bypassing Security Prompts**: Because independent open-source executables do not carry paid commercial signing certificates, Windows and macOS will warn that the app is unrecognized or potentially unsafe. Bypassing these warnings is strictly at your own discretion, and the software is provided "AS IS" with zero liability.
 
 ---
 

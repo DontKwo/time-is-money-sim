@@ -5,17 +5,13 @@ Life Money Simulator models daily cashflows, retirement accounts, credit cards, 
 ## Desktop Application Workflow
 
 1. Launch **TimeIsMoneySim** (see [Desktop Installation Guide](INSTALLATION.md) if your operating system prompts for verification).
-2. **Choose a Scenario**: Pick a built-in template (such as `example_mvp.yaml`, `example_401k_match.yaml`, `example_debt_payoff.yaml`, or `example_fire_lifecycle.yaml`) from the **Scenario Studio** selector.
-3. **Adjust Horizon & Inflation**: Override the number of days or inflation rate right in the top bar without editing YAML files manually.
-4. **Run Simulation, Monte Carlo, or Sensitivity**:
-   - **Run Simulation**: Calculates ending net worth, liquid assets, total debt, goal attainment, account balance curves, and monthly cashflow charts.
-   - **Monte Carlo**: Runs stochastic market trials and plots p5 through p95 fan bands.
-   - **Sensitivity Sweep**: Measures net worth upside and downside across key financial levers on a tornado chart.
-5. **Export Data**: Download the simulated transaction ledger as CSV for external inspection.
-
-## Financial Disclaimer
-
-Life Money Simulator is an educational modeling tool only. Verify outputs independently before making personal financial or tax decisions.
+2. **Dashboard Tab**: Pick a built-in template (`MVP`, `401k Match`, `Debt Payoff`, or `FIRE Lifecycle`), set the projection **Days** horizon, and click:
+   - **Run Simulation**: Calculates ending net worth, liquid assets, total debt, goal attainment, account balance curves, net worth stacked charts, and monthly cashflow charts.
+   - **Monte Carlo**: Runs stochastic market trials and plots p5 through p95 fan bands under **Monte Carlo / Tornado**.
+   - **Sensitivity**: Measures net worth upside and downside across financial parameters on a tornado chart.
+   - **Export CSV / Export PNG**: Downloads the simulated daily transaction ledger or active chart image locally.
+3. **Scenario Studio Tab**: Visually edit accounts, paychecks, recurring cashflows, life events, and policies, load or import `.yaml` templates, download edited `.yaml` configs, and run custom projections directly.
+4. **Compare Scenarios Tab**: Benchmark a baseline strategy against an alternative scenario side by side.
 
 ## Related Documentation
 
@@ -26,3 +22,7 @@ Life Money Simulator is an educational modeling tool only. Verify outputs indepe
 - [System Architecture](ARCHITECTURE.md)
 - [Developer Guide](DEVELOPMENT.md)
 - [Security Policy](../SECURITY.md)
+
+## Financial Disclaimer
+
+Life Money Simulator is an educational modeling tool only. Verify outputs independently before making personal financial or tax decisions.

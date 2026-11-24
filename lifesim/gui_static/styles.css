@@ -191,8 +191,10 @@ select:focus-visible {
 
 .chart-img {
   display: block;
-  width: 100%;
-  max-height: 480px;
+  width: auto;
+  max-width: 100%;
+  max-height: 410px;
+  margin: 0 auto;
   object-fit: contain;
   border-radius: 8px;
 }
